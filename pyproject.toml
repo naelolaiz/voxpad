@@ -9,6 +9,10 @@ description = "Local audio and WhatsApp transcription powered by Whistle, with r
 readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["dependencies"]
+keywords = ["speech-to-text", "transcription", "whatsapp", "dictation"]
+
+[project.optional-dependencies]
+dev = ["build>=1.2"]
 
 [project.scripts]
 voxpad = "voxpad.whatsapp:cli"

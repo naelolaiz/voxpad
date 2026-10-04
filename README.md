@@ -16,6 +16,8 @@ source .venv/bin/activate
 python -m pip install -e .
 ```
 
+On Windows, create the environment with `py -m venv .venv` and activate it in PowerShell with `.venv\Scripts\Activate.ps1`.
+
 The [codecpod](https://github.com/zhoukezi/codecpod) dependency decodes audio, mixes channels to mono and resamples to 16 kHz through Python. Its wheels include native audio codec libraries for Linux x86-64, macOS and Windows x86-64. No FFmpeg executable or subprocess is needed. The codec library embeds a reduced FFmpeg build and depends on NumPy, which is installed automatically. Platforms without a wheel require building native code; see the package documentation.
 
 The first transcription downloads Whistle's model and platform runtime. Subsequent runs use cached files. Audio is processed locally; the script disables Needle's optional telemetry.
@@ -69,13 +71,21 @@ You can also run `python -m voxpad` with the same arguments. For source-only use
 
 ## Development
 
-The `voxpad/` package contains the application, and `tests/` contains the test suite.
+The `voxpad/` package contains the application, and `tests/` contains the test suite. `pyproject.toml` defines package metadata, dependencies and the `voxpad` command. Install the development tools in your virtual environment:
 
 ```bash
-python -m unittest discover -v
+python -m pip install -e ".[dev]"
+python scripts/dev.py test
+python scripts/dev.py build
+# Run both:
+python scripts/dev.py check
 ```
 
-The tests use generated audio, codecpod for decoding and a fake transcription model; they do not download Whistle.
+These helpers work on Linux, macOS and Windows, including when called from another directory. Tests use generated audio, codecpod for decoding and a fake transcription model; they do not download Whistle. The test helper requires the audio dependencies so decoding tests cannot silently skip. You can also run `python -m unittest discover -v` directly.
+
+Builds use the standard Python build frontend (`python -m build`) and produce a wheel and source archive in `dist/`. VoxPad contains no compiled extensions, so its `py3-none-any.whl` installs across supported platforms. Native dependencies are installed separately for the target platform. To install a wheel, run `python -m pip install dist/voxpad-0.1.0-py3-none-any.whl`. The source archive includes tests and development helpers.
+
+GitHub Actions runs tests on Linux, Windows and both Intel and Apple Silicon macOS, builds distributions, and checks that the wheel and source archive install and expose the CLI. Download the `python-distributions` artifact from a successful workflow run. Package publishing is not configured.
 
 ## Roadmap
 

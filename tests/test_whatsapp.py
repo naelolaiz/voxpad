@@ -2,6 +2,7 @@
 
 from contextlib import redirect_stderr, redirect_stdout
 import builtins
+import errno
 import io
 import json
 from pathlib import Path
@@ -69,6 +70,16 @@ class ExportTests(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
         return path
+
+    def symlink(self, path, target, *, directory=False):
+        try:
+            path.symlink_to(target, target_is_directory=directory)
+        except NotImplementedError:
+            self.skipTest("Symbolic links are unsupported on this platform")
+        except OSError as error:
+            if error.errno in {errno.EPERM, errno.EACCES, errno.ENOSYS, errno.ENOTSUP} or getattr(error, "winerror", None) in {50, 1314}:
+                self.skipTest(f"Cannot create symbolic links on this platform: {error}")
+            raise
 
     def make_zip(self, entries):
         path = self.root / "export.zip"
@@ -145,17 +156,22 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(contexts[second], [])
         self.assertIn("ambiguous", error_output.getvalue())
 
-    def test_folder_discovery_excludes_outputs_symlinks_and_hidden_folders(self):
+    def test_folder_discovery_excludes_outputs_and_hidden_folders(self):
         audio = self.touch("media/VOICE.OPUS")
         chat = self.touch("chat.txt", b"chat")
         output = self.touch("transcripts.txt", b"previous report")
         self.touch(".cache/ignore.wav")
         self.touch("photo.jpg")
-        (self.root / "linked.opus").symlink_to(audio)
-        (self.root / "linked-folder").symlink_to(audio.parent, target_is_directory=True)
         with app.open_export(self.root, {output.resolve()}) as export:
             self.assertEqual(export.audio, [audio])
             self.assertEqual(export.chats, [chat])
+
+    def test_folder_discovery_does_not_follow_symlinks(self):
+        audio = self.touch("media/VOICE.OPUS")
+        self.symlink(self.root / "linked.opus", audio)
+        self.symlink(self.root / "linked-folder", audio.parent, directory=True)
+        with app.open_export(self.root) as export:
+            self.assertEqual(export.audio, [audio])
 
     def test_chat_input_selects_chat_and_audio_input_selects_only_recording(self):
         audio = self.touch("voice.opus")
@@ -221,6 +237,21 @@ class ExportTests(unittest.TestCase):
         result = destination.read_bytes().decode("utf-8")
         self.assertEqual(result, text.replace("A continuation\r\n", "A continuation\r\n[Voice message transcript: Hola, ¿qué tal?]\n"))
 
+    def test_atomic_write_preserves_mixed_line_endings_with_windows_text_defaults(self):
+        destination = self.root / "report.txt"
+        text = "José\r\nWindows line\nUnix line\rOld Mac line"
+        named_temporary_file = tempfile.NamedTemporaryFile
+
+        def windows_temporary_file(*args, **kwargs):
+            if kwargs.get("newline") is None:
+                kwargs["newline"] = "\r\n"
+            return named_temporary_file(*args, **kwargs)
+
+        with mock.patch.object(app.tempfile, "NamedTemporaryFile", side_effect=windows_temporary_file):
+            app.atomic_write(destination, text)
+        self.assertEqual(destination.read_bytes(), text.encode("utf-8"))
+        self.assertEqual(list(self.root.iterdir()), [destination])
+
     def test_dry_run_never_imports_backend_or_decoder_and_writes_no_reports(self):
         self.touch("voice.opus")
         self.touch("chat.txt", b"01/10/26, 10:00 - Ana: voice.opus (attached)\n")
@@ -274,7 +305,7 @@ class ExportTests(unittest.TestCase):
         self.touch("voice.opus")
         original = self.touch("chat.txt", b"01/10/26, 10:00 - Ana: voice.opus (attached)\n")
         companion = self.root / "transcripts.txt"
-        companion.symlink_to(original)
+        self.symlink(companion, original)
         stderr = io.StringIO()
         with redirect_stderr(stderr):
             code = app.main([str(self.root), "--dry-run", "-o", str(self.root / "transcripts.json")])
