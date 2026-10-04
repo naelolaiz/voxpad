@@ -1,0 +1,82 @@
+# VoxPad
+
+Local audio and WhatsApp transcription powered by Whistle, with real-time cross-platform dictation planned.
+
+VoxPad currently transcribes audio files and exported WhatsApp voice messages using [Cactus Whistle](https://cactuscompute.com/blog/whistle). It accepts an export ZIP, an extracted folder, a chat `.txt` with nearby media, or an individual audio file. It associates voice notes with sender names and timestamps from common Android and iPhone chat exports.
+
+Export your WhatsApp chat **with media included**. Text-only exports do not contain audio to transcribe. Supported audio formats include WhatsApp `.opus` and `.m4a` files, plus OGG, AAC, MP3, WAV, FLAC, AMR and AIFF. Videos are not transcribed.
+
+## Setup
+
+Use Python 3.10 or newer and install the dependencies:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
+
+The [codecpod](https://github.com/zhoukezi/codecpod) dependency decodes audio, mixes channels to mono and resamples to 16 kHz through Python. Its wheels include native audio codec libraries for Linux x86-64, macOS and Windows x86-64. No FFmpeg executable or subprocess is needed. The codec library embeds a reduced FFmpeg build and depends on NumPy, which is installed automatically. Platforms without a wheel require building native code; see the package documentation.
+
+The first transcription downloads Whistle's model and platform runtime. Subsequent runs use cached files. Audio is processed locally; the script disables Needle's optional telemetry.
+
+## Usage
+
+```bash
+voxpad "WhatsApp Chat.zip"
+```
+
+This saves `transcripts.json` and `transcripts.txt` in the current directory. JSON includes filenames, chat references, transcripts, detected languages, durations and chunk times. The text report is convenient to read. Existing report files are replaced; original chat and audio files are protected.
+
+Force Spanish and save an annotated copy of the original chat:
+
+```bash
+voxpad "WhatsApp Chat.zip" \
+  --language es \
+  --output results/transcripts.json \
+  --chat-output results/chat_with_transcripts.txt
+```
+
+Use an extracted export or its chat text:
+
+```bash
+voxpad "exported-chat/"
+voxpad "exported-chat/_chat.txt"
+```
+
+A chat `.txt` input searches its parent folder recursively for audio. Keep unrelated chats in separate folders. If a folder contains multiple chats, select the desired `.txt` for `--chat-output`, which requires exactly one chat. Put generated annotated chats outside the source export folder.
+
+Preview filenames and message metadata without downloading the model:
+
+```bash
+voxpad "WhatsApp Chat.zip" --dry-run
+```
+
+Transcribe one voice note and include word timestamps or names to favor:
+
+```bash
+voxpad "PTT-20261004-WA0001.opus" \
+  --word-timestamps --keyword "María" --keyword "Cactus"
+```
+
+Whistle supports English (`en`), German (`de`), French (`fr`), Spanish (`es`), Italian (`it`), Dutch (`nl`) and Polish (`pl`). Omit `--language` to detect language per chunk. `--model /path/to/whistle.cact` uses local weights; the runtime must also be cached for fully offline use.
+
+Whistle processes at most 30 seconds per call. The script decodes each recording to 16 kHz mono floating-point samples, then sends every frame in consecutive chunks, including the final partial chunk. Long voice notes are fully processed; words cut by a chunk boundary may be less accurate. `--chunk-seconds` selects a shorter chunk size. Word timestamps are relative to the full voice note, while chat timestamps stay in their original format to avoid guessing the date locale. Decoded recordings are held in memory, using about 3.7 MiB per minute of audio.
+
+Unrecognized chat formats still allow audio transcription, with empty message metadata. Missing or omitted media cannot be recovered. A failed audio file is recorded with its error and processing continues. Reports are saved after each recording. Exit status is `0` on success, `1` for failures and `130` for interruption.
+
+You can also run `python -m voxpad` with the same arguments. For source-only use without installing the command, install `requirements.txt` and run the module from the repository root.
+
+## Development
+
+The `voxpad/` package contains the application, and `tests/` contains the test suite.
+
+```bash
+python -m unittest discover -v
+```
+
+The tests use generated audio, codecpod for decoding and a fake transcription model; they do not download Whistle.
+
+## Roadmap
+
+Real-time microphone capture and dictation are planned, with desktop support across Linux, macOS and Windows as the initial target. Live dictation and typing into other applications are not implemented yet.
