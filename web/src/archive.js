@@ -1,8 +1,11 @@
 /** Read selected WhatsApp exports without expanding unrelated archive media. */
 import { AUDIO_EXTENSIONS } from "./chat.js";
 
-export const MAX_INPUT_BYTES = 100 * 1024 * 1024;
+// Chat text and recordings are held in memory; other archive media is never read.
 export const MAX_EXTRACTED_BYTES = 512 * 1024 * 1024;
+const MAX_DIRECTORY_BYTES = 64 * 1024 * 1024;
+// The end record is 22 bytes plus a comment of at most 65535.
+const END_SEARCH_BYTES = 65557;
 const INFLATE_CHUNK_BYTES = 8 * 1024;
 const UTF8 = new TextDecoder("utf-8", { fatal: true });
 const CP437 = "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ";
@@ -39,17 +42,36 @@ function decodeName(bytes, flags) {
   return [...bytes].map((byte) => byte < 128 ? String.fromCharCode(byte) : CP437[byte - 128]).join("");
 }
 
-/** Validate all central/local metadata before allocating any decompressed media. */
-function inspectZip(bytes) {
+/** Read one byte range of the file, so a large archive never has to fit in memory. */
+async function readRange(file, start, end) {
+  const bytes = new Uint8Array(await file.slice(start, end).arrayBuffer());
+  if (bytes.length !== end - start) throw new Error("ZIP size changed while reading.");
+  return bytes;
+}
+
+function fields(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const requireBytes = (offset, length) => {
     if (offset < 0 || offset + length > bytes.length) throw new Error("ZIP has truncated or invalid headers.");
   };
-  const u16 = (offset) => { requireBytes(offset, 2); return view.getUint16(offset, true); };
-  const u32 = (offset) => { requireBytes(offset, 4); return view.getUint32(offset, true); };
+  return {
+    requireBytes,
+    u16: (offset) => { requireBytes(offset, 2); return view.getUint16(offset, true); },
+    u32: (offset) => { requireBytes(offset, 4); return view.getUint32(offset, true); },
+  };
+}
+
+/**
+ * Validate the central directory, and the local headers of chat and audio
+ * members, before reading or allocating any member data.
+ */
+async function inspectZip(file) {
+  const tailStart = Math.max(0, file.size - END_SEARCH_BYTES);
+  const tail = await readRange(file, tailStart, file.size);
+  let { requireBytes, u16, u32 } = fields(tail);
   let end = -1;
-  for (let offset = bytes.length - 22; offset >= Math.max(0, bytes.length - 65557); offset -= 1) {
-    if (u32(offset) === 0x06054b50 && offset + 22 + u16(offset + 20) === bytes.length) {
+  for (let offset = tail.length - 22; offset >= 0; offset -= 1) {
+    if (u32(offset) === 0x06054b50 && offset + 22 + u16(offset + 20) === tail.length) {
       end = offset;
       break;
     }
@@ -64,12 +86,15 @@ function inspectZip(bytes) {
   if (count === 0xffff || centralSize === 0xffffffff || centralStart === 0xffffffff) {
     throw new Error("ZIP64 archives are unsupported. Select the extracted chat and audio files instead.");
   }
-  if (centralStart + centralSize !== end) throw new Error("ZIP has an invalid central directory.");
+  if (centralStart + centralSize !== tailStart + end) throw new Error("ZIP has an invalid central directory.");
+  if (centralSize > MAX_DIRECTORY_BYTES) throw new Error("ZIP has too many entries to read in the browser.");
+  const central = await readRange(file, centralStart, centralStart + centralSize);
+  ({ requireBytes, u16, u32 } = fields(central));
 
   const seen = new Set();
   const members = [];
   const intervals = [];
-  let offset = centralStart;
+  let offset = 0;
   let retainedSize = 0;
   for (let index = 0; index < count; index += 1) {
     requireBytes(offset, 46);
@@ -85,8 +110,8 @@ function inspectZip(bytes) {
     const attributes = u32(offset + 38);
     const localOffset = u32(offset + 42);
     const recordEnd = offset + 46 + nameLength + extraLength + commentLength;
-    if (recordEnd > centralStart + centralSize) throw new Error("ZIP has truncated entry metadata.");
-    const name = decodeName(bytes.subarray(offset + 46, offset + 46 + nameLength), flags);
+    if (recordEnd > centralSize) throw new Error("ZIP has truncated entry metadata.");
+    const name = decodeName(central.subarray(offset + 46, offset + 46 + nameLength), flags);
     const path = normalizePath(name);
     if (seen.has(path)) throw new Error(`Duplicate archive path: ${path}`);
     seen.add(path);
@@ -105,26 +130,34 @@ function inspectZip(bytes) {
       if (method === 0 && compressedSize !== originalSize) throw new Error(`Invalid stored ZIP member size: ${path}`);
     }
 
-    requireBytes(localOffset, 30);
-    if (localOffset >= centralStart || u32(localOffset) !== 0x04034b50) throw new Error("ZIP has an invalid local-file header.");
-    if (u16(localOffset + 6) !== flags || u16(localOffset + 8) !== method) {
-      throw new Error(`ZIP local and central headers disagree: ${path}`);
-    }
-    const localNameLength = u16(localOffset + 26);
-    const dataStart = localOffset + 30 + localNameLength + u16(localOffset + 28);
-    const dataEnd = dataStart + compressedSize;
-    if (dataEnd > centralStart) throw new Error(`ZIP member extends outside its data region: ${path}`);
-    const localName = decodeName(bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength), flags);
-    if (normalizePath(localName) !== path) throw new Error(`ZIP local and central filenames disagree: ${path}`);
-    if (!(flags & 8) && (u32(localOffset + 14) !== crc
-        || u32(localOffset + 18) !== compressedSize || u32(localOffset + 22) !== originalSize)) {
-      throw new Error(`ZIP local and central sizes/checksums disagree: ${path}`);
-    }
-    intervals.push({ start: localOffset, end: dataEnd });
-    if (keep) members.push({ path, method, crc, originalSize, compressedSize, dataStart, dataEnd });
+    // Skipped media is bounded from the directory alone; its bytes are never read.
+    const minimumEnd = localOffset + 30 + nameLength + compressedSize;
+    if (minimumEnd > centralStart) throw new Error(`ZIP member extends outside its data region: ${path}`);
+    if (keep) members.push({ path, flags, method, crc, originalSize, compressedSize, localOffset });
+    else intervals.push({ start: localOffset, end: minimumEnd });
     offset = recordEnd;
   }
-  if (offset !== centralStart + centralSize) throw new Error("ZIP central-directory length is inconsistent.");
+  if (offset !== centralSize) throw new Error("ZIP central-directory length is inconsistent.");
+
+  for (const member of members) {
+    const { path, flags, localOffset } = member;
+    const local = fields(await readRange(file, localOffset, localOffset + 30));
+    if (local.u32(0) !== 0x04034b50) throw new Error("ZIP has an invalid local-file header.");
+    if (local.u16(6) !== flags || local.u16(8) !== member.method) {
+      throw new Error(`ZIP local and central headers disagree: ${path}`);
+    }
+    const localNameLength = local.u16(26);
+    member.dataStart = localOffset + 30 + localNameLength + local.u16(28);
+    member.dataEnd = member.dataStart + member.compressedSize;
+    if (member.dataEnd > centralStart) throw new Error(`ZIP member extends outside its data region: ${path}`);
+    const localName = decodeName(await readRange(file, localOffset + 30, localOffset + 30 + localNameLength), flags);
+    if (normalizePath(localName) !== path) throw new Error(`ZIP local and central filenames disagree: ${path}`);
+    if (!(flags & 8) && (local.u32(14) !== member.crc
+        || local.u32(18) !== member.compressedSize || local.u32(22) !== member.originalSize)) {
+      throw new Error(`ZIP local and central sizes/checksums disagree: ${path}`);
+    }
+    intervals.push({ start: localOffset, end: member.dataEnd });
+  }
   intervals.sort((a, b) => a.start - b.start);
   for (let index = 1; index < intervals.length; index += 1) {
     if (intervals[index].start < intervals[index - 1].end) throw new Error("ZIP contains overlapping members.");
@@ -142,7 +175,7 @@ async function crc32(bytes) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-async function inflateMember(bytes, member, AsyncInflate) {
+async function inflateMember(compressed, member, AsyncInflate) {
   // The aggregate advertised size was checked before this fixed allocation.
   const output = new Uint8Array(member.originalSize);
   let written = 0;
@@ -162,17 +195,17 @@ async function inflateMember(bytes, member, AsyncInflate) {
   });
   try {
     let final = false;
-    let position = member.dataStart;
+    let position = 0;
     do {
-      const next = Math.min(position + INFLATE_CHUNK_BYTES, member.dataEnd);
+      const next = Math.min(position + INFLATE_CHUNK_BYTES, compressed.length);
       final = await new Promise((resolve, reject) => {
         pending = { resolve, reject };
         // AsyncInflate transfers its input. Copy only this bounded chunk so the
-        // rest of the archive remains readable, and await it before pushing more.
-        inflater.push(bytes.slice(position, next), next === member.dataEnd);
+        // rest of the member remains readable, and await it before pushing more.
+        inflater.push(compressed.slice(position, next), next === compressed.length);
       });
       position = next;
-    } while (position < member.dataEnd);
+    } while (position < compressed.length);
     if (!final || written !== member.originalSize) throw new Error(`ZIP member has an incorrect extracted size: ${member.path}`);
     return output;
   } finally {
@@ -189,15 +222,16 @@ function checkedFile(file) {
 async function readDirect(files) {
   const seen = new Set();
   const selected = [];
-  let inputSize = 0;
+  let retainedSize = 0;
   for (const file of files) {
     checkedFile(file);
-    inputSize += file.size;
-    if (inputSize > MAX_INPUT_BYTES) throw new Error("Selected files exceed the 100 MiB input limit.");
     const path = normalizePath(file.webkitRelativePath || file.name);
     if (seen.has(path)) throw new Error(`Duplicate selected path: ${path}`);
     seen.add(path);
-    if (supported(path)) selected.push({ path, file });
+    if (!supported(path)) continue;
+    retainedSize += file.size;
+    if (retainedSize > MAX_EXTRACTED_BYTES) throw new Error("Selected chat and audio files exceed the 512 MiB limit.");
+    selected.push({ path, file });
   }
   const entries = [];
   for (const { path, file } of selected) {
@@ -212,17 +246,14 @@ async function readDirect(files) {
 export async function readExport(file) {
   checkedFile(file);
   if (extension(file.name) !== ".zip") return readDirect([file]);
-  if (file.size > MAX_INPUT_BYTES) throw new Error("ZIP exceeds the 100 MiB input limit.");
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  if (bytes.length !== file.size) throw new Error("ZIP size changed while reading.");
-  const members = inspectZip(bytes);
+  if (typeof file.slice !== "function") throw new TypeError("Choose valid files from your device.");
+  const members = await inspectZip(file);
   let AsyncInflate;
   if (members.some((member) => member.method === 8)) ({ AsyncInflate } = await import("fflate"));
   const entries = [];
   for (const member of members) {
-    const data = member.method === 0
-      ? bytes.slice(member.dataStart, member.dataEnd)
-      : await inflateMember(bytes, member, AsyncInflate);
+    const compressed = await readRange(file, member.dataStart, member.dataEnd);
+    const data = member.method === 0 ? compressed : await inflateMember(compressed, member, AsyncInflate);
     if (data.length !== member.originalSize || await crc32(data) !== member.crc) {
       throw new Error(`ZIP member failed its size/checksum check: ${member.path}`);
     }
