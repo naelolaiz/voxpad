@@ -1,0 +1,87 @@
+:root { color: #253730; background: #f5f4ee; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-synthesis: none; line-height: 1.5; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; text-underline-offset: 3px; }
+button, select { font: inherit; }
+button, .dropzone { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .45; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid #cb9249; outline-offset: 4px; }
+.site-header { max-width: 1100px; margin: auto; display: flex; align-items: center; justify-content: space-between; padding: 30px 32px; }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 25px; font-weight: 750; letter-spacing: -1px; text-decoration: none; }
+.source-link { font-size: 13px; text-decoration: none; color: #59675e; }
+main { max-width: 940px; margin: auto; padding: 0 28px; }
+.intro { text-align: center; padding: 48px 0 42px; }
+.eyebrow { font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: 1.6px; color: #617268; margin: 0 0 13px; }
+.intro .eyebrow { font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.status-dot { width: 7px; height: 7px; background: #447e63; border-radius: 50%; }
+h1 { font-size: clamp(32px, 4.5vw, 53px); line-height: 1.13; letter-spacing: -2px; font-weight: 650; margin: 20px 0; }
+h1 span { color: #6a796d; }
+.intro-copy { max-width: 530px; margin: 20px auto; font-size: 15px; color: #657268; line-height: 1.7; }
+.trust-row { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; font-size: 11px; color: #647365; margin-top: 25px; }
+.workspace { background: #fffefa; border: 1px solid #dfE3d8; box-shadow: 0 8px 30px #2b413407; border-radius: 16px; padding: 30px; }
+.workspace-header, .results-header, .selection, .progress-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+h2 { font-size: 22px; font-weight: 650; letter-spacing: -.7px; margin: 0; }
+.workspace-header .eyebrow { margin-bottom: 5px; }
+.private-pill { font-size: 10px; padding: 6px 10px; background: #eff4ec; border: 1px solid #dce7d9; border-radius: 20px; color: #42705a; white-space: nowrap; }
+.dropzone { position: relative; margin-top: 24px; padding: 28px 16px; min-height: 205px; border: 1.5px dashed #b6c7b5; border-radius: 10px; background: #f8faf4; display: flex; align-items: center; flex-direction: column; cursor: pointer; text-align: center; transition: background .15s, border-color .15s; }
+.dropzone:hover, .dropzone.dragging { background: #eef5e9; border-color: #517f5b; }
+.dropzone:focus-within { outline: 3px solid #cb9249; outline-offset: 3px; }
+.dropzone.busy { pointer-events: none; opacity: .6; }
+.upload-icon { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid #d9e4d3; border-radius: 10px; background: white; font-size: 25px; color: #51735d; margin-bottom: 12px; }
+.dropzone strong { font-size: 14px; font-weight: 600; }
+.dropzone > span:not(.upload-icon):not(.choose-label) { color: #798279; font-size: 11px; margin: 6px 0 14px; }
+.choose-label { font-size: 11px; padding: 5px 13px; border: 1px solid #d7dfd2; border-radius: 6px; background: #fffefa; font-weight: 600; }
+#files { position: absolute; width: 1px; height: 1px; opacity: 0; bottom: 0; }
+.upload-help { color: #7a8279; font-size: 10px; margin: 10px 0 22px; }
+.upload-help strong { font-weight: 500; color: #63715f; }
+.selection { background: #f0f5ed; border-radius: 8px; padding: 12px 15px; margin-bottom: 20px; }
+.selection strong { font-size: 12px; word-break: break-word; }
+.selection p { font-size: 11px; margin: 3px 0 0; color: #6a796d; }
+.settings { display: grid; grid-template-columns: minmax(180px, 1fr) 1fr; align-items: end; gap: 30px; margin-bottom: 23px; }
+.settings label, .chat-choice { font-size: 11px; font-weight: 600; }
+select { display: block; width: 100%; border: 1px solid #dbe1d4; border-radius: 6px; margin-top: 7px; padding: 9px 10px; font-size: 12px; color: #40523f; background: #fffefa; }
+.settings p { font-size: 10px; color: #7c8678; line-height: 1.6; margin: 0 0 3px; }
+.action-row { display: flex; align-items: center; gap: 16px; }
+.primary-button { background: #194e40; color: #fffef4; border: 1px solid #194e40; border-radius: 7px; padding: 12px 18px; font-weight: 550; font-size: 12px; display: inline-flex; gap: 30px; align-items: center; justify-content: center; }
+.primary-button:hover:enabled { background: #25604e; }
+.action-row .primary-button { width: 100%; }
+.secondary-button { background: #fffefa; border: 1px solid #d2ddce; border-radius: 7px; padding: 12px 18px; font-size: 12px; color: #4d6754; }
+.text-button { color: #617260; padding: 8px 0; background: transparent; border: 0; font-size: 11px; white-space: nowrap; }
+.privacy-note { font-size: 10px; color: #8a9187; line-height: 1.7; margin: 15px 0 0; max-width: 680px; }
+.progress-panel { margin-top: 22px; }
+.progress-heading { color: #547359; font-size: 11px; }
+progress { width: 100%; height: 6px; border: 0; border-radius: 8px; margin-top: 9px; accent-color: #39785a; }
+progress::-webkit-progress-bar { background: #e7ecdf; border-radius: 8px; }
+progress::-webkit-progress-value { background: #39785a; border-radius: 8px; }
+.error { padding: 12px 14px; background: #fff2e9; color: #914c31; font-size: 12px; border-radius: 7px; }
+.warnings { padding: 10px 12px 10px 28px; font-size: 11px; color: #876c3c; background: #fcf7e7; border-radius: 7px; }
+.warnings li + li { margin-top: 5px; }
+.results { margin-top: 40px; }
+.results-header { align-items: end; }
+.results-header .eyebrow { margin-bottom: 5px; }
+.results-header p:not(.eyebrow) { font-size: 11px; color: #76816e; margin: 6px 0 0; }
+.downloads { display: flex; gap: 8px; flex-wrap: wrap; }
+.downloads .primary-button { gap: 18px; }
+.chat-choice { display: block; margin-top: 18px; max-width: 340px; }
+.chat-preview { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 450px; overflow: auto; border: 1px solid #dfe5d8; background: #fffefa; border-radius: 10px; padding: 24px; margin-top: 20px; font: 12px/1.9 ui-monospace, SFMono-Regular, Consolas, monospace; color: #435a48; }
+details { font-size: 11px; color: #64775f; padding: 8px 0; }
+summary { cursor: pointer; }
+.audio-list { list-style: none; padding: 0; }
+.audio-list li { padding: 12px 0; border-bottom: 1px solid #e0e6d9; }
+.audio-list strong { font-size: 11px; display: block; overflow-wrap: anywhere; }
+.audio-list p { margin: 5px 0 0; color: #7a8372; }
+.result-note { font-size: 10px; line-height: 1.7; color: #8a9283; }
+.how-it-works { margin: 36px 0 45px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 35px; }
+.how-it-works span { color: #9aab92; font: 10px ui-monospace, monospace; }
+h3 { font-size: 12px; margin: 8px 0 4px; font-weight: 600; }
+.how-it-works p { color: #88927d; font-size: 11px; line-height: 1.6; margin: 0; }
+.privacy-section { border-top: 1px solid #dfe5d8; margin: 0 0 40px; padding-top: 28px; }
+.privacy-section h2 { font-size: 20px; }
+.privacy-section p:not(.eyebrow) { color: #788573; font-size: 12px; line-height: 1.8; max-width: 740px; }
+.privacy-section strong { color: #4b6650; font-weight: 550; }
+footer { max-width: 1100px; padding: 20px 32px 25px; border-top: 1px solid #e2e5da; margin: auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; color: #8a9680; }
+footer > span { font-size: 17px; letter-spacing: -.5px; font-weight: 650; }
+footer p { font-size: 10px; }
+@media (max-width: 650px) { .site-header { padding: 20px; } main { padding: 0 16px; } .intro { padding: 30px 0; } h1 { letter-spacing: -1.2px; } .intro-copy { font-size: 13px; } .trust-row { gap: 14px; font-size: 10px; } .workspace { padding: 22px 18px; } .settings { grid-template-columns: 1fr; gap: 10px; } .results-header { align-items: start; flex-direction: column; } .downloads { width: 100%; } .downloads button { flex: 1; padding: 10px 12px; } .how-it-works { gap: 15px; } .how-it-works p { font-size: 10px; } footer { padding: 16px 20px; align-items: start; } footer p { text-align: right; max-width: 235px; margin: 0; } }

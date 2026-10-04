@@ -109,8 +109,22 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(contexts[german][0]["sender"], "Jörg")
         self.assertEqual(contexts[french][0]["sender"], "Chloé")
         self.assertEqual(occurrences[(chat, 1)], [spanish])
-        self.assertIn("Descripción de la nota", texts[chat])
+        self.assertEqual(texts[chat], text)
         self.assertEqual(app.parse_chat(text)[0].text, f"<adjunto: {spanish.name}>\nDescripción de la nota")
+
+    def test_headers_accept_localized_dates_and_time_markers(self):
+        cases = (
+            ("10/4/26, 9:10 PM - José: Hola", "10/4/26, 9:10 PM"),
+            ("2026-10-4, 9:10 p. m. - José: Hola", "2026-10-4, 9:10 p. m."),
+            ("[٤/١٠/٢٠٢٦، ٩:١٠ م] José: Hola", "٤/١٠/٢٠٢٦، ٩:١٠ م"),
+            ("[2026/10/4, 上午9:10] José: Hola", "2026/10/4, 上午9:10"),
+            ("[2026/10/4, 9:10 午後] José: Hola", "2026/10/4, 9:10 午後"),
+            ("[04.10.2026, 09：10] José： Hola", "04.10.2026, 09：10"),
+        )
+        for text, timestamp in cases:
+            with self.subTest(text=text):
+                message, = app.parse_chat(text)
+                self.assertEqual((message.timestamp, message.sender, message.text), (timestamp, "José", "Hola"))
 
     def test_android_12_hour_headers_and_attachment_on_continuation_line(self):
         audio = self.touch("PTT-20261001-WA0001.opus")
@@ -201,7 +215,7 @@ class ExportTests(unittest.TestCase):
         self.assertFalse(extracted.exists())
 
     def test_zip_rejects_traversal_absolute_and_windows_paths(self):
-        for name in ("../outside.opus", "folder/../../outside.opus", "/tmp/outside.opus", "..\\outside.opus", "C:\\outside.opus", "\\\\server\\outside.opus"):
+        for name in ("../outside.opus", "folder/../../outside.opus", "/tmp/outside.opus", "..\\outside.opus", "C:\\outside.opus", "\\\\server\\outside.opus", "media/C:/outside.opus"):
             with self.subTest(name=name):
                 archive = self.make_zip([(name, b"audio")])
                 with self.assertRaisesRegex(ValueError, "Unsafe ZIP"):
@@ -235,7 +249,7 @@ class ExportTests(unittest.TestCase):
             {audio: {"status": "ok", "text": "Hola, ¿qué tal?"}},
         )
         result = destination.read_bytes().decode("utf-8")
-        self.assertEqual(result, text.replace("A continuation\r\n", "A continuation\r\n[Voice message transcript: Hola, ¿qué tal?]\n"))
+        self.assertEqual(result, text.replace("A continuation\r\n", "A continuation\r\n[Voice message transcript: Hola, ¿qué tal?]\r\n"))
 
     def test_atomic_write_preserves_mixed_line_endings_with_windows_text_defaults(self):
         destination = self.root / "report.txt"
@@ -355,20 +369,55 @@ class AudioTests(unittest.TestCase):
                 mock.patch.object(subprocess, "run", side_effect=AssertionError("Decoding must not invoke subprocesses")):
             result = self.transcribe(audio, model, language="es", keywords=["José"], word_timestamps=True)
 
-        self.assertEqual([len(call["samples"]) for call in model.calls], [480000, 480000, frame_count - 960000])
+        # Chunks end within the last five of their 30 seconds, and cover every frame once.
+        lengths = [len(call["samples"]) for call in model.calls]
+        self.assertEqual(len(lengths), 3)
+        self.assertEqual(sum(lengths), frame_count)
+        for length in lengths[:-1]:
+            self.assertGreater(length, 25 * app.SAMPLE_RATE)
+            self.assertLessEqual(length, 30 * app.SAMPLE_RATE)
         normalized_original = np.frombuffer(original, dtype="<i2").astype(np.float32) / np.float32(32768)
         np.testing.assert_array_equal(np.concatenate([call["samples"] for call in model.calls]), normalized_original)
         self.assertEqual(result["text"], "part 1 part 2 part 3")
         self.assertEqual(result["languages"], ["en", "es"])
         self.assertAlmostEqual(result["duration_seconds"], frame_count / app.SAMPLE_RATE)
-        self.assertEqual([(segment["start"], segment["end"]) for segment in result["segments"]], [(0, 30), (30, 60), (60, frame_count / app.SAMPLE_RATE)])
-        self.assertEqual([word["start"] for word in result["words"]], [0.1, 30.1, 60.1])
-        self.assertEqual([word["end"] for word in result["words"]], [0.25, 30.25, 60.25])
+        starts = [sum(lengths[:number]) / app.SAMPLE_RATE for number in range(3)]
+        ends = [sum(lengths[:number + 1]) / app.SAMPLE_RATE for number in range(3)]
+        self.assertEqual([(segment["start"], segment["end"]) for segment in result["segments"]], list(zip(starts, ends)))
+        self.assertEqual([word["start"] for word in result["words"]], [0.1 + start for start in starts])
+        self.assertEqual([word["end"] for word in result["words"]], [0.25 + start for start in starts])
         self.assertEqual([word["probability"] for word in result["words"]], [0.9, 0.9, 0.9])
         for call in model.calls:
             self.assertEqual(call["samples"].ndim, 1)
             self.assertEqual(call["samples"].dtype, np.dtype("float32"))
             self.assertEqual(call["options"], {"language": "es", "keywords": ["José"], "word_timestamps": True})
+
+    def test_long_recording_is_cut_inside_pauses_near_the_chunk_limit(self):
+        rate = app.SAMPLE_RATE
+        # The phase keeps the tone away from zero where the pauses below end.
+        tone = np.sin(np.arange(61 * rate) * (2 * np.pi * 440 / rate) + 1) * 0.2
+        for start, end in ((27 * rate, 27 * rate + rate // 2), (883200, 889600), (10 * rate, 12 * rate)):
+            tone[start:end] = 0
+        audio = self.root / "pauses.wav"
+        with wave.open(str(audio), "wb") as recording:
+            recording.setnchannels(1)
+            recording.setsampwidth(2)
+            recording.setframerate(rate)
+            recording.writeframes((tone * 32767).astype("<i2").tobytes())
+        model = FakeWhistle()
+        result = self.transcribe(audio, model)
+        # Each cut is the middle of the last silent tenth of a second: 27.45 s and
+        # 55.55 s. The pause at 10 s is too far from the limit to be used.
+        self.assertEqual([len(call["samples"]) for call in model.calls], [439200, 449600, 87200])
+        self.assertEqual([(segment["start"], segment["end"]) for segment in result["segments"]], [(0, 27.45), (27.45, 55.55), (55.55, 61)])
+
+    def test_short_chunks_and_exact_fits_keep_their_limits(self):
+        samples = np.zeros(3 * app.SAMPLE_RATE, dtype=np.float32)
+        self.assertEqual(app.chunk_end(samples, 0, 3 * app.SAMPLE_RATE), len(samples))
+        self.assertEqual(app.chunk_end(samples, app.SAMPLE_RATE, 30 * app.SAMPLE_RATE), len(samples))
+        # A chunk too short to search for a pause is cut at its limit.
+        self.assertEqual(app.chunk_end(samples, 0, 1600), 1600)
+        self.assertEqual(app.chunk_end(samples, 0, 1), 1)
 
     def test_decoder_converts_stereo_to_16khz_mono_float32(self):
         audio = self.root / "stereo.wav"
@@ -401,10 +450,11 @@ class AudioTests(unittest.TestCase):
         write_wav(audio)
         (self.root / "broken.opus").write_bytes(b"invalid")
         chat = self.root / "chat.txt"
-        chat.write_text(
-            "01/10/26, 10:00 - José: voice.wav (archivo adjunto)\n"
-            "01/10/26, 10:01 - Ana: broken.opus (attached)\n", encoding="utf-8",
+        original = (
+            "﻿01/10/26, 10:00 - José: voice.wav (archivo adjunto)\r\n"
+            "01/10/26, 10:01 - Ana: broken.opus (attached)\r\n"
         )
+        chat.write_bytes(original.encode("utf-8"))
         output = self.root / "reports/results.json"
         annotated = self.root / "reports/annotated.txt"
         model = FakeWhistle()
@@ -416,14 +466,22 @@ class AudioTests(unittest.TestCase):
         constructor.assert_called_once()
         report = json.loads(output.read_text(encoding="utf-8"))
         results = {result["file"]: result for result in report["results"]}
+        # Reports name the input but never say where it is stored.
+        self.assertEqual(report["source"], "chat.txt")
+        self.assertNotIn(str(self.root), output.read_text(encoding="utf-8"))
+        self.assertNotIn(str(self.root), output.with_suffix(".txt").read_text(encoding="utf-8"))
         self.assertEqual(results["voice.wav"]["text"], "part 1")
         self.assertEqual(results["voice.wav"]["messages"][0]["sender"], "José")
         self.assertEqual(results["broken.opus"]["status"], "error")
         self.assertIn("decode", results["broken.opus"]["error"].lower())
         self.assertIn("José", output.with_suffix(".txt").read_text(encoding="utf-8"))
-        annotated_text = annotated.read_text(encoding="utf-8")
-        self.assertIn("[Voice message transcript: part 1]", annotated_text)
-        self.assertIn("[Voice message transcript: Error:", annotated_text)
+        annotated_text = annotated.read_bytes().decode("utf-8")
+        # The original text, BOM and CRLF included, survives around the inserted lines.
+        first, second = original.splitlines(keepends=True)
+        self.assertTrue(annotated_text.startswith(
+            f"{first}[Voice message transcript: part 1]\r\n{second}[Voice message transcript: Error:"
+        ))
+        self.assertTrue(annotated_text.endswith("]\r\n"))
 
     def test_real_opus_decodes_in_memory_without_external_converter(self):
         self.check_compressed_recording("voice.opus", codecpod.Opus(application="voip"))
