@@ -166,6 +166,12 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - name: Install browser application dependencies
         run: npm ci
+      # Restored after npm ci, which empties node_modules.
+      - name: Cache the speech model used by browser tests
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: web/node_modules/.cache/whistle
+          key: whistle-assets-${{ hashFiles('web/tests/browser/assets.js') }}
       - name: Run browser application unit tests
         run: npm test
       - name: Build browser application
