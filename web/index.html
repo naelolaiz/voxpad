@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Turn exported WhatsApp voice messages into a readable chat. Transcribe privately on your device with VoxPad and Whistle." />
+    <meta name="theme-color" content="#f5f4ee" />
+    <title>VoxPad — Give your voice messages a place in the conversation</title>
+    <link rel="icon" type="image/svg+xml" href="./mark.svg" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="VoxPad home"><img src="./mark.svg" width="34" height="34" alt="" /><span>voxpad</span></a>
+      <a class="source-link" href="https://github.com/naelolaiz/voxpad" target="_blank" rel="noopener noreferrer">Open source <span aria-hidden="true">↗</span></a>
+    </header>
+    <main>
+      <section class="intro" aria-labelledby="headline">
+        <p class="eyebrow"><span class="status-dot"></span> Your chat. Your device.</p>
+        <h1 id="headline">The whole conversation.<br /><span>Including the voice notes.</span></h1>
+        <p class="intro-copy">Turn a WhatsApp export into a readable conversation, with each voice message transcribed in its original place.</p>
+        <div class="trust-row"><span>✦ Free to use</span><span>⌁ Runs locally</span><span>↓ Text + JSON downloads</span></div>
+      </section>
+
+      <section class="workspace" aria-labelledby="workspace-title">
+        <div class="workspace-header"><div><p class="eyebrow">01 / Bring your conversation</p><h2 id="workspace-title">From voice to text</h2></div><span class="private-pill">Private by default</span></div>
+        <label class="dropzone" id="dropzone" for="files">
+          <span class="upload-icon" aria-hidden="true">↑</span>
+          <strong>Drop your WhatsApp export here</strong>
+          <span>A ZIP with media included, or a chat TXT and its audio files</span>
+          <span class="choose-label">Choose files <span aria-hidden="true">↗</span></span>
+          <input id="files" type="file" multiple accept=".zip,.txt,.opus,.ogg,.oga,.m4a,.aac,.mp3,.wav,.flac,.amr,.aif,.aiff" />
+        </label>
+        <p class="upload-help">In WhatsApp, choose <strong>Export chat → Include media</strong>. Files up to 100 MB total. Photos and videos are ignored.</p>
+        <div id="selection" class="selection" hidden>
+          <div><strong id="source-name"></strong><p id="source-summary"></p></div>
+          <button id="clear" class="text-button" type="button">Remove</button>
+        </div>
+        <div class="settings">
+          <label for="language">Voice message language<select id="language"><option value="">Detect automatically</option><option value="en">English</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="it">Italian</option><option value="nl">Dutch</option><option value="pl">Polish</option></select></label>
+          <p>Whistle supports these seven languages. For a multilingual conversation, keep automatic detection.</p>
+        </div>
+        <div class="action-row"><button id="start" class="primary-button" disabled type="button">Transcribe voice messages <span aria-hidden="true">→</span></button><button id="cancel" class="text-button" type="button" hidden>Stop</button></div>
+        <div id="progress-panel" class="progress-panel" hidden><div class="progress-heading"><span id="progress-message" role="status" aria-live="polite"></span><span id="progress-count"></span></div><progress id="progress" max="1" value="0" aria-label="Transcription progress"></progress></div>
+        <p id="error" class="error" role="alert" hidden></p>
+        <ul id="warnings" class="warnings" hidden aria-label="Import notices"></ul>
+        <p class="privacy-note">Your conversation and audio stay in this tab. The first transcription downloads Whistle (about 17 MB); no account is needed. Keep this page open while it works.</p>
+      </section>
+
+      <section id="results" class="results" aria-labelledby="results-title" hidden>
+        <div class="results-header"><div><p class="eyebrow">02 / Keep the conversation</p><h2 id="results-title">Your readable chat</h2><p id="result-summary"></p></div><div class="downloads"><button id="download-log" class="primary-button" type="button">Download text <span aria-hidden="true">↓</span></button><button id="download-json" class="secondary-button" type="button">Download JSON <span aria-hidden="true">↓</span></button></div></div>
+        <label id="chat-choice" class="chat-choice" hidden for="chat-select">Conversation<select id="chat-select"></select></label>
+        <pre id="chat-preview" class="chat-preview" tabindex="0" aria-label="Chat with voice transcripts"></pre>
+        <details id="audio-details"><summary>Voice message details</summary><ol id="audio-list" class="audio-list"></ol></details>
+        <p class="result-note">Review transcripts for accuracy. JSON keeps the original chat, message metadata, transcription segments, and errors for future formatting.</p>
+      </section>
+
+      <section class="how-it-works" aria-label="How it works"><div><span>01</span><h3>Export with media</h3><p>Bring the chat text and its voice recordings.</p></div><div><span>02</span><h3>Let your device listen</h3><p>Whistle turns voice messages into text locally.</p></div><div><span>03</span><h3>Take the whole story</h3><p>Download the conversation and reusable JSON.</p></div></section>
+      <section class="privacy-section" aria-labelledby="privacy-title">
+        <p class="eyebrow">Privacy, built in</p><h2 id="privacy-title">Your export never leaves your device.</h2>
+        <p>VoxPad reads your files and transcribes audio in your browser. <strong>No audio, chat text, filenames, or transcripts are uploaded to, cached on, or stored on a server.</strong> There is no upload endpoint, account, or analytics.</p>
+        <p>Your conversation stays in this tab’s memory. Reloading or closing the page releases that working data; downloads are saved to your device when you choose. Only the speech model and runtime are cached in your browser for reuse.</p>
+        <p>GitHub serves the app, and Hugging Face serves the speech model and runtime. These downloads expose ordinary connection information, such as your IP address, to those hosts. They do not receive your conversation.</p>
+      </section>
+    </main>
+    <footer><span>voxpad</span><p>Powered by <a href="https://cactuscompute.com/blog/whistle" target="_blank" rel="noopener noreferrer">Cactus Whistle</a> · Hosted on GitHub Pages · <a href="./third-party-notices.txt">Third-party notices</a></p></footer>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
