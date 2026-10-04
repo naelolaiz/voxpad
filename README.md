@@ -28,7 +28,7 @@ The first transcription downloads Whistle's model and platform runtime. Subseque
 voxpad "WhatsApp Chat.zip"
 ```
 
-This saves `transcripts.json` and `transcripts.txt` in the current directory. JSON includes filenames, chat references, transcripts, detected languages, durations and chunk times. The text report is convenient to read. Existing report files are replaced; original chat and audio files are protected.
+This saves `transcripts.json` and `transcripts.txt` in the current directory. JSON includes filenames, chat references, transcripts, detected languages, durations and chunk times. The text report is convenient to read. Reports name the input by its file or folder name only, so sharing one does not reveal where the export is stored. Existing report files are replaced; original chat and audio files are protected.
 
 Force Spanish and save an annotated copy of the original chat:
 
@@ -63,7 +63,7 @@ voxpad "PTT-20261004-WA0001.opus" \
 
 Whistle supports English (`en`), German (`de`), French (`fr`), Spanish (`es`), Italian (`it`), Dutch (`nl`) and Polish (`pl`). Omit `--language` to detect language per chunk. `--model /path/to/whistle.cact` uses local weights; the runtime must also be cached for fully offline use.
 
-Whistle processes at most 30 seconds per call. The script decodes each recording to 16 kHz mono floating-point samples, then sends every frame in consecutive chunks, including the final partial chunk. Long voice notes are fully processed; words cut by a chunk boundary may be less accurate. `--chunk-seconds` selects a shorter chunk size. Word timestamps are relative to the full voice note, while chat timestamps stay in their original format to avoid guessing the date locale. Decoded recordings are held in memory, using about 3.7 MiB per minute of audio.
+Whistle processes at most 30 seconds per call. The script decodes each recording to 16 kHz mono floating-point samples, then sends every frame in consecutive chunks, including the final partial chunk. A chunk that cannot hold the rest of the recording ends at the quietest moment of its last five seconds, so boundaries usually fall in a pause instead of inside a word. Long voice notes are fully processed; speech without a pause near a boundary can still be cut mid-word and may be less accurate there. `--chunk-seconds` selects a shorter maximum chunk length. Word timestamps are relative to the full voice note, while chat timestamps stay in their original format to avoid guessing the date locale. Decoded recordings are held in memory, using about 3.7 MiB per minute of audio.
 
 Unrecognized chat formats still allow audio transcription, with empty message metadata. Missing or omitted media cannot be recovered. A failed audio file is recorded with its error and processing continues. Reports are saved after each recording. Exit status is `0` on success, `1` for failures and `130` for interruption.
 
@@ -91,7 +91,9 @@ GitHub Actions runs tests on Linux, Windows and both Intel and Apple Silicon mac
 
 `web/` contains a static browser app that does the same job without installing anything: drop a WhatsApp export ZIP, or a chat `.txt` with its audio files, and download the conversation with each voice message transcribed in place, as text and as JSON. It is published to GitHub Pages from `main`.
 
-Everything runs in the browser tab. The export is read, decoded and transcribed locally with Whistle compiled to WebAssembly; no chat text, audio, filenames or transcripts are uploaded. The first transcription downloads the Whistle model and runtime (about 17 MB) from Hugging Face and caches them in the browser. Voice messages of any length are transcribed in full: as in the command-line tool, each recording is sent to Whistle in consecutive 30-second chunks, so words cut by a chunk boundary may be less accurate. Inputs are limited to 100 MiB, and ZIP64 and encrypted archives are unsupported.
+Everything runs in the browser tab. The export is read, decoded and transcribed locally with Whistle compiled to WebAssembly; no chat text, audio, filenames or transcripts are uploaded. The first transcription downloads the Whistle model and runtime (about 17 MB) from Hugging Face and caches them in the browser. Voice messages of any length are transcribed in full: as in the command-line tool, each recording is sent to Whistle in consecutive chunks of at most 30 seconds that end in a pause where there is one. Inputs are limited to 100 MiB, and ZIP64 and encrypted archives are unsupported.
+
+Two safeguards back the privacy claim. The built page carries a Content-Security-Policy that allows connections only to its own site and to Hugging Face, and the speech worker is started so that the same policy binds it. The model and runtime are pinned to exact revisions and checked against their SHA-256 before they are run or cached; to update them, change the URLs and digests in both `web/src/whistle-worker.js` and `web/tests/browser/assets.js`. The policy needs a browser that supports `'wasm-unsafe-eval'` (Chrome 97, Firefox 102, Safari 16 or newer) and is not applied by the development server.
 
 Develop it with Node.js 22.12 or newer:
 

@@ -1,4 +1,9 @@
 /** Main-thread client for the Whistle worker. Recordings never leave the tab. */
+// The worker starts from a blob: URL so that it inherits this page's
+// Content-Security-Policy. A worker loaded by URL would not be bound by it.
+import workerSource from './whistle-worker.js?raw';
+
+let workerUrl = null;
 
 const LANGUAGES = new Set(['en', 'de', 'fr', 'es', 'it', 'nl', 'pl']);
 
@@ -28,7 +33,8 @@ export class Transcriber {
     if (typeof Worker === 'undefined' || typeof WebAssembly === 'undefined') {
       throw new Error('This browser cannot run local transcription. Try a recent Chrome, Firefox, Edge, or Safari.');
     }
-    const worker = new Worker(new URL('./whistle-worker.js', import.meta.url));
+    workerUrl ||= URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' }));
+    const worker = new Worker(workerUrl);
     worker.onmessage = ({ data }) => {
       if (this.worker !== worker) return;
       const request = this.requests.get(data.id);

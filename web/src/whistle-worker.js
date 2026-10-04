@@ -1,13 +1,36 @@
-/* Classic worker: runs Cactus Whistle in WebAssembly, off the main thread. */
+/*
+ * Classic worker: runs Cactus Whistle in WebAssembly, off the main thread.
+ * transcriber.js starts this file's text as it is, so it must stay
+ * self-contained: no imports, and nothing that needs a build step.
+ */
 
 const SAMPLE_RATE = 16000;
 // Whistle processes at most 30 seconds per call.
 const CHUNK_SAMPLES = 30 * SAMPLE_RATE;
+// A chunk ends at the quietest tenth of a second within its last five seconds.
+const BOUNDARY_SEARCH_SAMPLES = 5 * SAMPLE_RATE;
+const BOUNDARY_WINDOW_SAMPLES = SAMPLE_RATE / 10;
 const OUTPUT_BYTES = 1 << 18;
 const CACHE_NAME = 'voxpad-whistle-v1';
-// Pinned revisions; tests/browser/assets.js serves the same URLs.
-const RUNTIME_URL = 'https://huggingface.co/Cactus-Compute/needle3/resolve/c7c415a3d1b3d929014bc6e866d51ebb971f7089/wasm/';
-const MODEL_URL = 'https://huggingface.co/Cactus-Compute/whistle/resolve/b358ddadd89b7a713b5aa131f23032d3cca1b251/whistle.cact';
+// Pinned revisions and the SHA-256 of their contents. Nothing is run or cached
+// unless it matches. tests/browser/assets.js lists the same values.
+const ASSETS = {
+  runtime: {
+    label: 'speech runtime',
+    url: 'https://huggingface.co/Cactus-Compute/needle3/resolve/c7c415a3d1b3d929014bc6e866d51ebb971f7089/wasm/needle.js',
+    sha256: 'f3f7366dcad9555b792ee519d2518f3c506038bcb2ffd179e76e850000749359',
+  },
+  engine: {
+    label: 'speech engine',
+    url: 'https://huggingface.co/Cactus-Compute/needle3/resolve/c7c415a3d1b3d929014bc6e866d51ebb971f7089/wasm/needle.wasm',
+    sha256: 'c19b9ddf9c7de4eb4f37e5f1811c5bbea9f099041d2a27284daf89789ee8523d',
+  },
+  model: {
+    label: 'Whistle model (16.9 MB)',
+    url: 'https://huggingface.co/Cactus-Compute/whistle/resolve/b358ddadd89b7a713b5aa131f23032d3cca1b251/whistle.cact',
+    sha256: 'b6e02f048568ac5d01a2042556c658061e699acbc0aa2a1439f52f3d461dffeb',
+  },
+};
 const LANGUAGES = new Set(['en', 'de', 'fr', 'es', 'it', 'nl', 'pl']);
 const SPEECH_MODEL = 2;
 
@@ -22,15 +45,25 @@ function report(id, phase, message, fraction) {
   self.postMessage({ id, type: 'progress', progress });
 }
 
+async function digest(bytes) {
+  if (!self.crypto?.subtle) throw new Error('Open this page over HTTPS so the speech engine can be verified.');
+  const hash = await self.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 /** Fetch a public engine/model asset, reusing the browser cache when allowed. */
-async function download(url, label, id) {
+async function download({ url, label, sha256 }, id) {
   let cache = null;
   try {
     if (typeof caches !== 'undefined') cache = await caches.open(CACHE_NAME);
     const cached = cache && await cache.match(url);
     if (cached) {
-      report(id, 'download', `Using cached ${label}.`, 1);
-      return new Uint8Array(await cached.arrayBuffer());
+      const bytes = new Uint8Array(await cached.arrayBuffer());
+      if (await digest(bytes) === sha256) {
+        report(id, 'download', `Using cached ${label}.`, 1);
+        return bytes;
+      }
+      await cache.delete(url);
     }
   } catch {
     cache = null;
@@ -66,6 +99,9 @@ async function download(url, label, id) {
     bytes = new Uint8Array(await response.arrayBuffer());
   }
   if (!bytes.byteLength) throw new Error(`The downloaded ${label} is empty. Please try again.`);
+  if (await digest(bytes) !== sha256) {
+    throw new Error(`The downloaded ${label} failed its integrity check and was not used. Please try again later.`);
+  }
   if (cache) {
     try {
       await cache.put(url, new Response(bytes, {
@@ -90,9 +126,9 @@ function lastError() {
 async function load(id) {
   if (needle) return;
   loading ||= (async () => {
-    const runtime = await download(`${RUNTIME_URL}needle.js`, 'speech runtime', id);
-    const wasmBinary = await download(`${RUNTIME_URL}needle.wasm`, 'speech engine', id);
-    const model = await download(MODEL_URL, 'Whistle model (16.9 MB)', id);
+    const runtime = await download(ASSETS.runtime, id);
+    const wasmBinary = await download(ASSETS.engine, id);
+    const model = await download(ASSETS.model, id);
     report(id, 'initialize', 'Starting the local speech engine…', 0);
     const script = URL.createObjectURL(new Blob([runtime], { type: 'text/javascript' }));
     try {
@@ -117,6 +153,33 @@ async function load(id) {
   await loading;
 }
 
+/**
+ * Return where the chunk starting at `start` ends. A chunk that cannot hold the
+ * rest of the recording ends at its quietest moment, so fewer words are cut.
+ */
+function chunkEnd(samples, start) {
+  const limit = start + CHUNK_SAMPLES;
+  if (limit >= samples.length) return samples.length;
+  const first = limit - BOUNDARY_SEARCH_SAMPLES;
+  const energy = new Float64Array(BOUNDARY_SEARCH_SAMPLES);
+  let total = 0;
+  for (let index = 0; index < BOUNDARY_SEARCH_SAMPLES; index += 1) {
+    total += samples[first + index] ** 2;
+    energy[index] = total;
+  }
+  let end = limit;
+  let quietest = Infinity;
+  for (let index = BOUNDARY_WINDOW_SAMPLES; index < BOUNDARY_SEARCH_SAMPLES; index += 1) {
+    const windowEnergy = energy[index] - energy[index - BOUNDARY_WINDOW_SAMPLES];
+    // Of equally quiet windows take the latest, which keeps chunks long.
+    if (windowEnergy <= quietest) {
+      quietest = windowEnergy;
+      end = first + index + 1 - BOUNDARY_WINDOW_SAMPLES / 2;
+    }
+  }
+  return end;
+}
+
 async function transcribe(samples, language, id) {
   if (!(samples instanceof Float32Array) || samples.length === 0) throw new Error('The recording contains no decoded audio.');
   if (language != null && !LANGUAGES.has(language)) throw new Error('The selected spoken language is unsupported.');
@@ -136,12 +199,12 @@ async function transcribe(samples, language, id) {
     }
     const segments = [];
     const languages = [];
-    const parts = Math.ceil(samples.length / CHUNK_SAMPLES);
     // Every frame is sent, in consecutive chunks, including the final partial one.
-    for (let start = 0; start < samples.length; start += CHUNK_SAMPLES) {
-      const length = Math.min(CHUNK_SAMPLES, samples.length - start);
+    for (let start = 0, end; start < samples.length; start = end) {
+      end = chunkEnd(samples, start);
+      const length = end - start;
       const part = segments.length + 1;
-      report(id, 'transcribe', `Transcribing part ${part} of ${parts}…`, (part - 1) / parts);
+      report(id, 'transcribe', `Transcribing part ${part}…`, start / samples.length);
       // Re-create the view each time: the WebAssembly heap may have grown.
       const heap = new Float32Array(needle.HEAPU8.buffer, input, length);
       for (let index = 0; index < length; index += 1) {
@@ -154,9 +217,9 @@ async function transcribe(samples, language, id) {
       const parsed = JSON.parse(needle.UTF8ToString(output));
       if (typeof parsed.text !== 'string') throw new Error('The speech engine returned an invalid transcript.');
       const detected = parsed.language || '';
-      segments.push({ start: start / SAMPLE_RATE, end: (start + length) / SAMPLE_RATE, text: parsed.text.trim(), language: detected });
+      segments.push({ start: start / SAMPLE_RATE, end: end / SAMPLE_RATE, text: parsed.text.trim(), language: detected });
       if (detected && !languages.includes(detected)) languages.push(detected);
-      report(id, 'transcribe', `Finished part ${part} of ${parts}.`, part / parts);
+      report(id, 'transcribe', `Finished part ${part}.`, end / samples.length);
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
     return {

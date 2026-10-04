@@ -120,15 +120,17 @@ test('real Whistle transcribes Opus in place, keeps reusable JSON, and sends/sto
   await page.screenshot({ path: 'test-results/voxpad-desktop.png', fullPage: true });
 });
 
-test('recordings longer than 30 seconds are transcribed in consecutive parts', async ({ page, context }) => {
+test('recordings longer than 30 seconds are cut in a pause and transcribed in full', async ({ page, context }) => {
   await serveAssets(context);
   const speech = await decodeAudio(new Uint8Array(await speechFixture()));
-  const copies = 8;
-  const samples = new Float32Array(speech.length * copies);
-  for (let copy = 0; copy < copies; copy += 1) samples.set(speech, copy * speech.length);
-  const seconds = samples.length / 16000;
-  expect(seconds).toBeGreaterThan(30);
-  expect(seconds).toBeLessThan(60);
+  // Seven utterances, half a second of silence, then an eighth that crosses 30 s.
+  const pause = 8000;
+  const pauseStart = 7 * speech.length;
+  const samples = new Float32Array(8 * speech.length + pause);
+  for (let copy = 0; copy < 7; copy += 1) samples.set(speech, copy * speech.length);
+  samples.set(speech, pauseStart + pause);
+  expect(pauseStart + pause).toBeLessThan(30 * 16000);
+  expect(samples.length).toBeGreaterThan(30 * 16000);
   await page.goto('/');
   await page.locator('#files').setInputFiles({ name: 'long-note.wav', mimeType: 'audio/wav', buffer: wav(samples) });
   await expect(page.locator('#source-summary')).toHaveText('0 chat files · 1 voice message');
@@ -137,13 +139,83 @@ test('recordings longer than 30 seconds are transcribed in consecutive parts', a
   await expect(page.locator('#progress-message')).toHaveText('Done. Your downloads are ready.', { timeout: 120000 });
   const result = JSON.parse(await downloadText(page, 'Download JSON')).results[0];
   expect(result.status).toBe('ok');
-  expect(result.duration_seconds).toBeCloseTo(seconds, 2);
-  expect(result.segments.map(({ start, end }) => [start, end])).toEqual([[0, 30], [30, result.duration_seconds]]);
-  // Speech on both sides of the 30-second boundary reaches the transcript.
-  expect(result.segments[0].text.toLowerCase()).toContain('voice message');
-  expect(result.segments[1].text.toLowerCase()).toContain('tomorrow');
-  expect(result.text).toBe(result.segments.map((segment) => segment.text).join(' '));
+  expect(result.duration_seconds).toBeCloseTo(samples.length / 16000, 2);
+  expect(result.segments).toHaveLength(2);
+  const [first, second] = result.segments;
+  expect([first.start, second.start, second.end]).toEqual([0, first.end, result.duration_seconds]);
+  // The cut falls in the silence before the eighth utterance, not at 30 s inside it.
+  const cut = Math.round(first.end * 16000);
+  expect(cut).toBeGreaterThan(pauseStart);
+  expect(cut).toBeLessThan(30 * 16000);
+  expect(Array.from(samples.subarray(cut - 800, cut + 800)).every((sample) => Math.round(sample * 32767) === 0)).toBe(true);
+  expect(first.text.toLowerCase()).toContain('tomorrow');
+  expect(second.text.toLowerCase()).toContain('voice message');
+  expect(second.text.toLowerCase()).toContain('tomorrow');
+  expect(result.text).toBe(`${first.text} ${second.text}`);
   expect(await downloadText(page, 'Download text')).toBe(`long-note.wav\n${result.text}\n`);
+});
+
+test('Ogg/Opus is decoded with WebAssembly when the browser cannot decode it', async ({ page, context }) => {
+  await serveAssets(context);
+  // Safari cannot decode WhatsApp's Ogg/Opus natively; make Chromium behave the same.
+  await page.addInitScript(() => {
+    OfflineAudioContext.prototype.decodeAudioData = () => Promise.reject(new DOMException('Unsupported audio.', 'EncodingError'));
+  });
+  await page.goto('/');
+  await page.locator('#files').setInputFiles({ name: 'voice.opus', mimeType: 'audio/ogg', buffer: await speechFixture() });
+  await page.locator('#language').selectOption('en');
+  await page.locator('#start').click();
+  await expect(page.locator('#progress-message')).toHaveText('Done. Your downloads are ready.', { timeout: 120000 });
+  const result = JSON.parse(await downloadText(page, 'Download JSON')).results[0];
+  expect(result.status).toBe('ok');
+  expect(result.duration_seconds).toBe(65630 / 16000);
+  expect(result.text.toLowerCase()).toContain('tomorrow');
+});
+
+test('the built page and its speech worker can only reach this site and the model host', async ({ page, context }) => {
+  await serveAssets(context);
+  const outside = 'https://upload.example/collect';
+  const reached = [];
+  await context.route(outside, (route) => {
+    reached.push(route.request().url());
+    return route.fulfill({ status: 200, body: 'ok', headers: { 'Access-Control-Allow-Origin': '*' } });
+  });
+  await page.goto('/');
+  const policy = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
+  expect(policy).toContain("default-src 'none'");
+  expect(policy).toContain("connect-src 'self' https://huggingface.co ");
+  await page.locator('#files').setInputFiles({ name: 'voice.opus', mimeType: 'audio/ogg', buffer: await speechFixture() });
+  await page.locator('#start').click();
+  await expect(page.locator('#progress-message')).toHaveText('Done. Your downloads are ready.', { timeout: 120000 });
+  expect(page.workers()).toHaveLength(1);
+  const [worker] = page.workers();
+  // Only a worker started from a blob: URL inherits the page's policy.
+  expect(worker.url()).toMatch(/^blob:/);
+  const download = (url) => fetch(url).then((response) => response.ok, () => false);
+  const upload = (url) => fetch(url, { method: 'POST', body: 'private' }).then(() => 'sent', () => 'blocked');
+  for (const scope of [page, worker]) {
+    expect(await scope.evaluate(download, assets[0].url)).toBe(true);
+    expect(await scope.evaluate(upload, outside)).toBe('blocked');
+  }
+  expect(reached).toEqual([]);
+});
+
+test('a modified speech runtime is refused, never run, and not cached', async ({ page, context }) => {
+  await serveAssets(context);
+  const [runtime] = assets;
+  const modified = Buffer.concat([await readFile(`${assetDirectory}${runtime.name}`), Buffer.from('\nself.modifiedRuntimeRan = true;\n')]);
+  await context.route(runtime.url, (route) => route.fulfill({
+    body: modified,
+    headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/octet-stream' },
+  }));
+  await page.goto('/');
+  await page.locator('#files').setInputFiles({ name: 'voice.opus', mimeType: 'audio/ogg', buffer: await speechFixture() });
+  await page.locator('#start').click();
+  await expect(page.locator('#error')).toContainText('speech runtime failed its integrity check');
+  await expect(page.locator('#result-summary')).toContainText('1 pending');
+  const [worker] = page.workers();
+  expect(await worker.evaluate(() => self.modifiedRuntimeRan)).toBeUndefined();
+  expect(await page.evaluate(async () => (await (await caches.open('voxpad-whistle-v1')).keys()).length)).toBe(0);
 });
 
 test('unsafe exports fail without initializing transcription', async ({ page }) => {
