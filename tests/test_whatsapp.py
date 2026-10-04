@@ -59,6 +59,41 @@ class FakeWhisper:
         }
 
 
+class FakeService:
+    """Stand in for the hosted service: capture what would be uploaded, then answer or fail as told."""
+
+    def __init__(self, *, token="hf_secret", outcomes=()):
+        self.token = token
+        self.outcomes = list(outcomes)
+        self.clients = []
+        self.calls = []
+
+    def module(self):
+        """A replacement for the huggingface_hub module."""
+        service = self
+
+        class Client:
+            def __init__(self, **options):
+                service.clients.append(options)
+
+            def automatic_speech_recognition(self, audio, **options):
+                service.calls.append({"audio": audio, **options})
+                outcome = service.outcomes.pop(0)
+                if isinstance(outcome, Exception):
+                    raise outcome
+                return types.SimpleNamespace(text=outcome)
+
+        return types.SimpleNamespace(InferenceClient=Client, get_token=lambda: service.token)
+
+
+def http_error(status, message=None):
+    """An error shaped like the ones the model hub raises for an HTTP status."""
+    error = OSError(f"{status} Error for url: https://router.example/v1")
+    error.response = types.SimpleNamespace(status_code=status)
+    error.server_message = message
+    return error
+
+
 class ExportTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -276,7 +311,7 @@ class ExportTests(unittest.TestCase):
         original_import = builtins.__import__
 
         def guarded_import(name, *args, **kwargs):
-            if name.split(".")[0] in {"faster_whisper", "ctranslate2", "codecpod", "numpy"}:
+            if name.split(".")[0] in {"faster_whisper", "ctranslate2", "codecpod", "numpy", "huggingface_hub"}:
                 raise AssertionError(f"Dry run must not import {name}")
             return original_import(name, *args, **kwargs)
 
@@ -374,6 +409,32 @@ class ExportTests(unittest.TestCase):
                 with self.assertRaises(SystemExit) as error:
                     app.main([str(audio), "--dry-run", f"--chunk-seconds={size}"])
                 self.assertEqual(error.exception.code, 2)
+
+    def test_remote_options_the_service_cannot_honor_are_rejected_before_any_work(self):
+        audio = self.touch("voice.opus")
+        folder = self.root / "converted-model"
+        folder.mkdir()
+        cases = (
+            ["--remote", "deepinfra", "--keyword", "José"],
+            ["--remote", "deepinfra", "--word-timestamps"],
+            ["--remote", "hf-inference", "--language", "es"],
+            ["--remote", "deepinfra", "--model", str(folder)],
+            ["--remote", "elsewhere"],
+        )
+        constructor = mock.Mock(side_effect=AssertionError("Nothing may be uploaded"))
+        with mock.patch.object(app, "RemoteWhisper", constructor):
+            for arguments in cases:
+                with self.subTest(arguments=arguments), redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as error:
+                        app.main([str(audio), *arguments])
+                    self.assertEqual(error.exception.code, 2)
+            # Callers of the function get the same answer as the command line.
+            with self.assertRaisesRegex(ValueError, "--keyword is not available"):
+                app.transcribe_export(audio, self.root / "transcripts.json", remote="deepinfra", keywords=["José"])
+            # A dry run lists the recordings without a token or a connection.
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(app.main([str(audio), "--remote", "deepinfra", "--language", "es", "--dry-run"]), 0)
+        constructor.assert_not_called()
 
 
 @unittest.skipUnless(codecpod is not None and np is not None, "Install codecpod and NumPy for audio conversion tests")
@@ -535,6 +596,117 @@ class AudioTests(unittest.TestCase):
         self.assertLess(np.sqrt(np.mean((samples - source) ** 2)), 0.03)
         self.assertAlmostEqual(result["duration_seconds"], 2.0)
         self.assertEqual(result["text"], "part 1")
+
+
+@unittest.skipUnless(codecpod is not None and np is not None, "Install codecpod and NumPy for audio conversion tests")
+class RemoteTests(unittest.TestCase):
+    """The hosted service is replaced by a fake: these tests never connect anywhere."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+
+    def engine(self, service, *arguments):
+        with mock.patch.dict(sys.modules, {"huggingface_hub": service.module()}):
+            return app.RemoteWhisper(*arguments)
+
+    def test_adapter_uploads_wav_names_the_repository_and_forces_the_language(self):
+        service = FakeService(outcomes=["  Hola, ¿qué tal?  ", None])
+        routed = self.engine(service, "large-v3-turbo", "deepinfra")
+        own = self.engine(service, "openai/whisper-large-v3", "hf-inference")
+        samples = np.array([0.0, 0.5, 1.5, -1.5], dtype=np.float32)
+        self.assertEqual(routed.transcribe(samples, language="es"), {"text": "Hola, ¿qué tal?", "language": "es"})
+        # Without a forced language the service does not report one.
+        self.assertEqual(own.transcribe(samples), {"text": "", "language": ""})
+        self.assertEqual(service.clients, [
+            {"provider": "deepinfra", "token": "hf_secret", "timeout": 120, "headers": None},
+            {"provider": "hf-inference", "token": "hf_secret", "timeout": 120, "headers": {"Content-Type": "audio/wav"}},
+        ])
+        first, second = service.calls
+        self.assertEqual((first["model"], first["extra_body"]), ("openai/whisper-large-v3-turbo", {"language": "es"}))
+        self.assertEqual((second["model"], second["extra_body"]), ("openai/whisper-large-v3", None))
+        with wave.open(io.BytesIO(first["audio"])) as recording:
+            self.assertEqual(
+                (recording.getnchannels(), recording.getsampwidth(), recording.getframerate()), (1, 2, app.SAMPLE_RATE))
+            frames = recording.readframes(recording.getnframes())
+        # Samples beyond full scale are clipped instead of wrapping around.
+        self.assertEqual(struct.unpack("<4h", frames), (0, 16384, 32767, -32767))
+
+    def test_adapter_does_not_start_without_a_token(self):
+        service = FakeService(token=None)
+        with self.assertRaisesRegex(RuntimeError, "HF_TOKEN"):
+            self.engine(service)
+        self.assertEqual(service.clients, [])
+
+    def test_failures_that_would_repeat_are_told_apart_from_passing_ones(self):
+        cases = (
+            (http_error(401, "Invalid token"), True, "Invalid token"),
+            (http_error(402, "Credits used up"), True, "Credits used up"),
+            (http_error(404), True, "404 Error for url"),
+            (ValueError("Model is not supported by provider"), True, "not supported by provider"),
+            (http_error(429, "Too many requests"), False, "Too many requests"),
+            (http_error(503), False, "503 Error for url"),
+            (TimeoutError("The request\ntimed out"), False, "The request timed out"),
+            (Exception(), False, "Exception"),
+        )
+        service = FakeService(outcomes=[error for error, _, _ in cases])
+        engine = self.engine(service)
+        for error, refused, reason in cases:
+            with self.subTest(error=error):
+                with self.assertRaises(RuntimeError) as caught:
+                    engine.transcribe(np.zeros(16, dtype=np.float32))
+                self.assertEqual(isinstance(caught.exception, app.RemoteRefused), refused)
+                message = str(caught.exception)
+                self.assertTrue(message.startswith("DeepInfra through Hugging Face did not transcribe the audio: "))
+                self.assertIn(reason, message)
+                self.assertNotIn("\n", message)
+
+    def test_main_uploads_only_with_remote_and_stops_when_the_service_refuses(self):
+        for name in ("a.wav", "b.wav", "c.wav"):
+            write_wav(self.root / name)
+        chat = self.root / "chat.txt"
+        chat.write_text(
+            "01/10/26, 10:00 - Ana: a.wav (attached)\n"
+            "01/10/26, 10:01 - Bob: b.wav (attached)\n"
+            "01/10/26, 10:02 - Eva: c.wav (attached)\n",
+            encoding="utf-8",
+        )
+        output = self.root / "reports/results.json"
+        annotated = self.root / "reports/annotated.txt"
+        service = FakeService(outcomes=["Hola", http_error(402, "Credits used up")])
+        local = mock.Mock(side_effect=AssertionError("Whisper must not run on this computer"))
+        stderr = io.StringIO()
+        with mock.patch.dict(sys.modules, {"huggingface_hub": service.module()}), \
+                mock.patch.object(app, "Whisper", local), \
+                redirect_stdout(io.StringIO()), redirect_stderr(stderr):
+            code = app.main([
+                str(chat), "-o", str(output), "--chat-output", str(annotated), "--language", "es", "--remote", "deepinfra",
+            ])
+        self.assertEqual(code, 1)
+        local.assert_not_called()
+        # The third recording is never uploaded once the second is refused.
+        self.assertEqual([(call["model"], call["extra_body"]) for call in service.calls],
+                         [("openai/whisper-large-v3-turbo", {"language": "es"})] * 2)
+        written = output.read_text(encoding="utf-8")
+        report = json.loads(written)
+        self.assertEqual(report["model"], "openai/whisper-large-v3-turbo on DeepInfra through Hugging Face")
+        self.assertEqual([(result["file"], result["status"]) for result in report["results"]],
+                         [("a.wav", "ok"), ("b.wav", "error")])
+        self.assertEqual((report["results"][0]["text"], report["results"][0]["languages"]), ("Hola", ["es"]))
+        self.assertIn("Credits used up", report["results"][1]["error"])
+        self.assertIn("Uploading the audio to DeepInfra through Hugging Face", stderr.getvalue())
+        self.assertIn("Stopped early", stderr.getvalue())
+        # The token is used to connect and appears nowhere else.
+        for text in (written, output.with_suffix(".txt").read_text(encoding="utf-8"), stderr.getvalue()):
+            self.assertNotIn("hf_secret", text)
+        self.assertEqual(annotated.read_text(encoding="utf-8").splitlines(), [
+            "01/10/26, 10:00 - Ana: a.wav (attached)",
+            "[Voice message transcript: Hola]",
+            "01/10/26, 10:01 - Bob: b.wav (attached)",
+            "[Voice message transcript: Error: DeepInfra through Hugging Face did not transcribe the audio: Credits used up]",
+            "01/10/26, 10:02 - Eva: c.wav (attached)",
+        ])
 
 
 if __name__ == "__main__":

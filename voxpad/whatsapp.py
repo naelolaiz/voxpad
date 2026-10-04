@@ -6,6 +6,7 @@ Requires faster-whisper and codecpod. Run with --help for examples and options.
 import argparse
 from contextlib import contextmanager
 from dataclasses import dataclass
+import io
 import json
 import math
 import os
@@ -16,6 +17,7 @@ import stat
 import sys
 import tempfile
 import unicodedata
+import wave
 import zipfile
 
 
@@ -26,6 +28,9 @@ LANGUAGES = tuple((
     "sl sn so sq sr su sv sw ta te tg th tk tl tr tt uk ur uz vi yi yo zh"
 ).split())
 DEFAULT_MODEL = "large-v3-turbo"
+# Hosted services that can run Whisper instead of this computer, and who receives the audio.
+REMOTE_SERVICES = {"deepinfra": "DeepInfra through Hugging Face", "hf-inference": "Hugging Face"}
+REMOTE_TIMEOUT_SECONDS = 120
 SAMPLE_RATE = 16000
 # A chunk ends at the quietest tenth of a second within its last five seconds.
 BOUNDARY_SEARCH_SECONDS = 5
@@ -213,6 +218,82 @@ class Whisper:
         return result
 
 
+class RemoteRefused(RuntimeError):
+    """A hosted service turned a request down for a reason the next recording would meet too."""
+
+
+def remote_model(model: str) -> str:
+    """Name a Whisper size as its Hugging Face repository; a repository is used as given."""
+    return model if "/" in model else f"openai/whisper-{model}"
+
+
+def remote_conflict(remote: str | None, *, model: str, language: str | None, keywords: list[str] | None,
+                    word_timestamps: bool) -> str | None:
+    """Say which option the chosen hosted service cannot honor, if any."""
+    if not remote:
+        return None
+    if remote not in REMOTE_SERVICES:
+        return f"--remote must be one of: {', '.join(REMOTE_SERVICES)}"
+    if keywords:
+        return "--keyword is not available with --remote"
+    if word_timestamps:
+        return "--word-timestamps is not available with --remote"
+    if language and remote == "hf-inference":
+        return "--language is not available with --remote hf-inference; use --remote deepinfra, or let Whisper detect the language"
+    if Path(model).is_dir():
+        return "--remote needs a Whisper size or a Hugging Face repository as --model, not a folder"
+    return None
+
+
+def wav_bytes(samples) -> bytes:
+    """Encode 16 kHz mono samples as a 16-bit WAV file held in memory."""
+    import numpy
+    pcm = numpy.rint(numpy.clip(samples, -1.0, 1.0) * 32767).astype("<i2")
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as recording:
+        recording.setnchannels(1)
+        recording.setsampwidth(2)
+        recording.setframerate(SAMPLE_RATE)
+        recording.writeframes(pcm.tobytes())
+    return buffer.getvalue()
+
+
+class RemoteWhisper:
+    """Run Whisper on a hosted service through Hugging Face, uploading one chunk of audio at a time."""
+
+    def __init__(self, model: str = DEFAULT_MODEL, service: str = "deepinfra"):
+        try:
+            from huggingface_hub import InferenceClient, get_token
+        except ImportError as error:
+            raise RuntimeError("Install the Python dependencies: python -m pip install -r requirements.txt") from error
+        token = get_token()
+        if not token:
+            raise RuntimeError("--remote needs a Hugging Face access token that may call Inference Providers: "
+                               "set HF_TOKEN or run `hf auth login`.")
+        self.model = remote_model(model)
+        self.service = REMOTE_SERVICES[service]
+        # Hugging Face's own service tells raw audio apart by this header; DeepInfra receives a form upload.
+        headers = {"Content-Type": "audio/wav"} if service == "hf-inference" else None
+        self._client = InferenceClient(provider=service, token=token, timeout=REMOTE_TIMEOUT_SECONDS, headers=headers)
+
+    def transcribe(self, samples, *, language: str | None = None, keywords: list[str] | None = None,
+                   word_timestamps: bool = False) -> dict:
+        audio = wav_bytes(samples)
+        try:
+            output = self._client.automatic_speech_recognition(
+                audio, model=self.model, extra_body={"language": language} if language else None)
+        except Exception as error:  # Network, service and response failures arrive as unrelated types.
+            status = getattr(getattr(error, "response", None), "status_code", None)
+            reason = getattr(error, "server_message", None) or str(error) or type(error).__name__
+            message = f"{self.service} did not transcribe the audio: {' '.join(reason.split())}"
+            # A rejected token, used-up credits or a model the service lacks fail every recording alike.
+            if isinstance(error, ValueError) or (status is not None and 400 <= status < 500 and status not in (408, 429)):
+                raise RemoteRefused(message) from error
+            raise RuntimeError(message) from error
+        # The service does not say which language it heard.
+        return {"text": (output.text or "").strip(), "language": language or ""}
+
+
 def chunk_end(samples, start: int, chunk_frames: int) -> int:
     """Return where the chunk starting at `start` ends.
 
@@ -337,6 +418,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--keyword", action="append", default=[], help="Favor a name or phrase; may be repeated")
     parser.add_argument("--word-timestamps", action="store_true", help="Include word times and probabilities in JSON")
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Whisper model name, or a folder with a converted model (default: {DEFAULT_MODEL})")
+    parser.add_argument("--remote", choices=tuple(REMOTE_SERVICES), help="Upload the audio to this hosted service instead of running Whisper on this computer; needs a Hugging Face token in HF_TOKEN and is billed to that account")
     parser.add_argument("--chunk-seconds", type=float, default=30, help="Longest chunk, greater than 0 and at most 30 (default: 30)")
     parser.add_argument("--dry-run", action="store_true", help="List audio and associated messages without loading Whisper or writing files")
     return parser
@@ -345,16 +427,21 @@ def build_parser() -> argparse.ArgumentParser:
 def transcribe_export(source: Path, output: Path, chat_output: Path | None = None, *,
                       model: str = DEFAULT_MODEL, language: str | None = None, keywords: list[str] | None = None,
                       word_timestamps: bool = False, chunk_seconds: float = 30, dry_run: bool = False,
-                      chat_output_optional: bool = False, notify=None, progress=None, should_stop=None) -> dict | None:
+                      remote: str | None = None, chat_output_optional: bool = False,
+                      notify=None, progress=None, should_stop=None) -> dict | None:
     """Transcribe every recording of an export and write the reports.
 
     `notify(text)` receives status lines, `progress(done, total)` is called before
     each recording and once at the end, and `should_stop()` is asked before each
     recording. With `chat_output_optional`, an export without exactly one chat
-    skips the annotated chat instead of failing. Returns a summary, or None for a
-    dry run.
+    skips the annotated chat instead of failing. `remote` names a hosted service
+    that receives the audio instead of Whisper running here. Returns a summary,
+    or None for a dry run.
     """
     notify = notify or (lambda text: print(text, file=sys.stderr))
+    conflict = remote_conflict(remote, model=model, language=language, keywords=keywords, word_timestamps=word_timestamps)
+    if conflict:
+        raise ValueError(conflict)
     destinations = {output, output.with_suffix(".txt").resolve()}
     if chat_output:
         destinations.add(chat_output)
@@ -388,18 +475,23 @@ def transcribe_export(source: Path, output: Path, chat_output: Path | None = Non
                 for message in contexts[path]:
                     print(f"  {message['timestamp']} | {message['sender'] or '(system message)'}")
             return None
-        # Keep inference local and disable the model hub's optional usage telemetry.
+        # Disable the model hub's optional usage telemetry. Inference stays local unless a remote service was chosen.
         os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
         os.environ["DO_NOT_TRACK"] = "1"
         try:
             import codecpod
         except ImportError as error:
             raise RuntimeError("Install the Python dependencies: python -m pip install -r requirements.txt") from error
-        notify(f"Loading Whisper {model} (the first run downloads the model)...")
-        engine = Whisper(model)
+        if remote:
+            engine = RemoteWhisper(model, remote)
+            notify(f"Uploading the audio to {engine.service} to transcribe it with {engine.model}...")
+            model_name = f"{engine.model} on {engine.service}"
+        else:
+            notify(f"Loading Whisper {model} (the first run downloads the model)...")
+            engine = Whisper(model)
+            model_name = f"Whisper {Path(model).name if Path(model).is_dir() else model}"
         # Reports get shared: name the input without revealing where it is stored.
-        model_name = Path(model).name if Path(model).is_dir() else model
-        report = {"source": source.name, "model": f"Whisper {model_name}", "sample_rate": SAMPLE_RATE,
+        report = {"source": source.name, "model": model_name, "sample_rate": SAMPLE_RATE,
                   "chunk_seconds": chunk_seconds, "results": []}
         results: dict[Path, dict] = {}
         stopped = False
@@ -417,6 +509,11 @@ def transcribe_export(source: Path, output: Path, chat_output: Path | None = Non
                     path, engine, chunk_seconds=chunk_seconds, decoder=codecpod,
                     language=language, keywords=keywords or [], word_timestamps=word_timestamps,
                 ))
+            except RemoteRefused as error:
+                notify(f"  Error: {error}")
+                result.update(status="error", error=str(error))
+                # The remaining recordings would be refused alike, so keep what is done and stop.
+                stopped = True
             except (OSError, ValueError, RuntimeError, EOFError) as error:
                 notify(f"  Error: {error}")
                 # Decoder and system messages may quote the full local path.
@@ -425,6 +522,8 @@ def transcribe_export(source: Path, output: Path, chat_output: Path | None = Non
             results[path] = result
             # Save after each recording so completed work survives interruption.
             write_reports(output, report)
+            if stopped:
+                break
         if chat_output:
             chat, text = next(iter(texts.items()))
             write_annotated_chat(chat_output, chat, text, occurrences, results)
@@ -442,6 +541,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if not math.isfinite(args.chunk_seconds) or not 0 < args.chunk_seconds <= 30:
         parser.error("--chunk-seconds must be greater than 0 and at most 30")
+    conflict = remote_conflict(args.remote, model=args.model, language=args.language, keywords=args.keyword,
+                               word_timestamps=args.word_timestamps)
+    if conflict:
+        parser.error(conflict)
     source = args.source.expanduser().resolve()
     output = args.output.expanduser().resolve()
     chat_output = args.chat_output.expanduser().resolve() if args.chat_output else None
@@ -460,6 +563,7 @@ def main(argv: list[str] | None = None) -> int:
         summary = transcribe_export(
             source, output, chat_output, model=args.model, language=args.language, keywords=args.keyword,
             word_timestamps=args.word_timestamps, chunk_seconds=args.chunk_seconds, dry_run=args.dry_run,
+            remote=args.remote,
         )
     except (OSError, ValueError, RuntimeError, zipfile.BadZipFile, zipfile.LargeZipFile) as error:
         print(f"Error: {error}", file=sys.stderr)
@@ -469,6 +573,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Saved {len(summary['report']['results'])} transcripts ({summary['failures']} failed) to {output} and {output.with_suffix('.txt')}")
     if chat_output:
         print(f"Annotated chat: {chat_output}")
+    if summary["stopped"]:
+        print("Stopped early: the remaining recordings were not transcribed.", file=sys.stderr)
     return 1 if summary["failures"] else 0
 
 

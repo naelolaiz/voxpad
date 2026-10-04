@@ -28,3 +28,7 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    ignore:
+      # tokenizers, which faster-whisper depends on, requires huggingface-hub below 2.0.
+      - dependency-name: huggingface-hub
+        update-types: ["version-update:semver-major"]

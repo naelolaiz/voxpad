@@ -20,7 +20,7 @@ On Windows, create the environment with `py -m venv .venv` and activate it in Po
 
 The [codecpod](https://github.com/zhoukezi/codecpod) dependency decodes audio, mixes channels to mono and resamples to 16 kHz through Python. Its wheels include native audio codec libraries for Linux x86-64, macOS and Windows x86-64. No FFmpeg executable or subprocess is needed. The codec library embeds a reduced FFmpeg build and depends on NumPy, which is installed automatically. Platforms without a wheel require building native code; see the package documentation.
 
-The first transcription downloads the Whisper model from Hugging Face, about 1.6 GB for the default `large-v3-turbo`. Subsequent runs use the cached files. Audio is processed locally, on a GPU when one is available; the script disables the model hub's optional telemetry.
+The first transcription downloads the Whisper model from Hugging Face, about 1.6 GB for the default `large-v3-turbo`. Subsequent runs use the cached files. Audio is processed locally, on a GPU when one is available, unless you choose [remote transcription](#remote-transcription); the script disables the model hub's optional telemetry.
 
 On Intel Macs use Python 3.13 or older: one of faster-whisper's dependencies has no Intel macOS build for Python 3.14.
 
@@ -71,6 +71,28 @@ Unrecognized chat formats still allow audio transcription, with empty message me
 
 You can also run `python -m voxpad` with the same arguments. For source-only use without installing the command, install `requirements.txt` and run the module from the repository root.
 
+## Remote transcription
+
+Whisper's larger models are slow without a GPU. `--remote` runs the model on a hosted service instead of your computer, through [Hugging Face Inference Providers](https://huggingface.co/docs/inference-providers):
+
+```bash
+export HF_TOKEN=hf_...
+voxpad "WhatsApp Chat.zip" --language es --remote deepinfra
+```
+
+**This uploads your audio.** Each voice message is decoded on your computer and sent, in chunks of at most 30 seconds, to the service you name. Chat text, sender names, filenames and transcripts are not sent. Nothing is uploaded unless you pass `--remote`, and the desktop and browser apps never upload.
+
+| Service | Audio goes to | `--language` |
+|---|---|---|
+| `deepinfra` | DeepInfra, routed through Hugging Face | Supported |
+| `hf-inference` | Hugging Face | Not available; Whisper detects the language |
+
+Create an access token that may make calls to Inference Providers in your [Hugging Face settings](https://huggingface.co/settings/tokens) and put it in `HF_TOKEN`, or run `hf auth login`. Usage is billed to that account at the service's rate, after the monthly credits the account includes; see [Hugging Face's pricing](https://huggingface.co/docs/inference-providers/pricing).
+
+`--model` names a Whisper size, which selects `openai/whisper-<size>`, or a full repository name. The service must offer the model; the default, `openai/whisper-large-v3-turbo`, is offered by both. `--keyword` and `--word-timestamps` are not available remotely, and the detected language is not reported. Each chunk is uploaded as 16-bit WAV, about 1 MB for 30 seconds.
+
+A recording that fails is recorded with its error and the run continues, as it does locally. A rejected token, used-up credits or a model the service does not offer stops the run instead and keeps the transcripts already saved.
+
 ## Desktop application
 
 `voxpad-app` opens a window that does the same without the command line: choose an export ZIP, folder, chat `.txt` or audio file, or drop it on the window, pick the language and model, and press Transcribe. It shows the conversation with each voice message transcribed in place and saves `transcripts.json`, `transcripts.txt` and `chat_with_transcripts.txt` in a new folder beside the export, which you can change. Stop finishes the current voice message and keeps what is done.
@@ -91,7 +113,7 @@ python scripts/dev.py build
 python scripts/dev.py check
 ```
 
-These helpers work on Linux, macOS and Windows, including when called from another directory. Tests use generated audio, codecpod for decoding and a fake transcription model; they do not download Whisper. The test helper requires the audio dependencies so decoding tests cannot silently skip. You can also run `python -m unittest discover -v` directly.
+These helpers work on Linux, macOS and Windows, including when called from another directory. Tests use generated audio, codecpod for decoding, and fakes for the transcription model and the hosted service; they do not download Whisper or connect anywhere. The test helper requires the audio dependencies so decoding tests cannot silently skip. You can also run `python -m unittest discover -v` directly.
 
 Builds use the standard Python build frontend (`python -m build`) and produce a wheel and source archive in `dist/`. VoxPad contains no compiled extensions, so its `py3-none-any.whl` installs across supported platforms. Native dependencies are installed separately for the target platform. To install a wheel, run `python -m pip install dist/voxpad-0.1.0-py3-none-any.whl`. The source archive includes tests and development helpers.
 
