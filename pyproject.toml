@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "voxpad"
 version = "0.1.0"
-description = "Local audio and WhatsApp transcription powered by Whistle, with real-time cross-platform dictation planned."
+description = "Local audio and WhatsApp transcription powered by Whisper, with real-time cross-platform dictation planned."
 readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["dependencies"]
