@@ -2,14 +2,45 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { deflateRawSync } from "node:zlib";
 
-import { MAX_EXTRACTED_BYTES, MAX_INPUT_BYTES, readExport, readFiles } from "../src/archive.js";
+import { MAX_EXTRACTED_BYTES, readExport, readFiles } from "../src/archive.js";
 
 const encode = (text) => new TextEncoder().encode(text);
 const decode = (bytes) => new TextDecoder().decode(bytes);
 
 function file(name, data, relative = "") {
   const bytes = typeof data === "string" ? encode(data) : data;
-  return { name, size: bytes.length, webkitRelativePath: relative, arrayBuffer: async () => bytes.slice().buffer };
+  return {
+    name,
+    size: bytes.length,
+    webkitRelativePath: relative,
+    arrayBuffer: async () => bytes.slice().buffer,
+    slice: (start, end) => ({ arrayBuffer: async () => bytes.slice(start, end).buffer }),
+  };
+}
+
+/**
+ * A file made of byte arrays and holes (a number of zero bytes that are never
+ * allocated), which records how much of it is read.
+ */
+function sparseFile(name, parts) {
+  const size = parts.reduce((total, part) => total + (part.length ?? part), 0);
+  const result = { name, size, bytesRead: 0, arrayBuffer() { throw new Error("Must not read the whole file"); } };
+  result.slice = (start, end) => ({
+    async arrayBuffer() {
+      const bytes = new Uint8Array(Math.max(0, Math.min(end, size) - start));
+      result.bytesRead += bytes.length;
+      let offset = 0;
+      for (const part of parts) {
+        const length = part.length ?? part;
+        const from = Math.max(start, offset);
+        const to = Math.min(start + bytes.length, offset + length);
+        if (from < to && typeof part !== "number") bytes.set(part.subarray(from - offset, to - offset), from - start);
+        offset += length;
+      }
+      return bytes.buffer;
+    },
+  });
+  return result;
 }
 
 function checksum(bytes) {
@@ -23,6 +54,15 @@ function checksum(bytes) {
 
 /** Small independent ZIP fixtures, including deliberately inconsistent headers. */
 function zip(entries) {
+  const parts = zipParts(entries);
+  const result = new Uint8Array(parts.reduce((total, bytes) => total + bytes.length, 0));
+  let offset = 0;
+  for (const bytes of parts) { result.set(bytes, offset); offset += bytes.length; }
+  return result;
+}
+
+/** The archive as a list of byte arrays; an entry's `hole` is its data as a number of unallocated bytes. */
+function zipParts(entries) {
   const local = [];
   const central = [];
   let localSize = 0;
@@ -32,7 +72,8 @@ function zip(entries) {
     const payload = typeof entry.data === "string" ? encode(entry.data) : entry.data || new Uint8Array();
     const method = entry.method || 0;
     const compressed = entry.compressed || (method === 8 ? new Uint8Array(deflateRawSync(payload)) : payload);
-    const size = entry.size ?? payload.length;
+    const compressedLength = entry.hole ?? compressed.length;
+    const size = entry.size ?? entry.hole ?? payload.length;
     const crc = entry.crc ?? checksum(payload);
     const flags = entry.flags ?? 0x800;
     const header = new Uint8Array(30 + localName.length + compressed.length);
@@ -42,7 +83,7 @@ function zip(entries) {
     localView.setUint16(6, flags, true);
     localView.setUint16(8, method, true);
     localView.setUint32(14, crc, true);
-    localView.setUint32(18, compressed.length, true);
+    localView.setUint32(18, compressedLength, true);
     localView.setUint32(22, entry.localSize ?? size, true);
     localView.setUint16(26, localName.length, true);
     header.set(localName, 30);
@@ -57,7 +98,7 @@ function zip(entries) {
     view.setUint16(8, flags, true);
     view.setUint16(10, method, true);
     view.setUint32(16, crc, true);
-    view.setUint32(20, compressed.length, true);
+    view.setUint32(20, compressedLength, true);
     view.setUint32(24, size, true);
     view.setUint16(28, name.length, true);
     view.setUint32(38, entry.attributes || 0, true);
@@ -65,6 +106,10 @@ function zip(entries) {
     record.set(name, 46);
     central.push(record);
     localSize += header.length;
+    if (entry.hole) {
+      local.push(entry.hole);
+      localSize += entry.hole;
+    }
   }
   const centralSize = central.reduce((total, bytes) => total + bytes.length, 0);
   const end = new Uint8Array(22);
@@ -74,10 +119,7 @@ function zip(entries) {
   view.setUint16(10, entries.length, true);
   view.setUint32(12, centralSize, true);
   view.setUint32(16, localSize, true);
-  const result = new Uint8Array(localSize + centralSize + 22);
-  let offset = 0;
-  for (const bytes of [...local, ...central, end]) { result.set(bytes, offset); offset += bytes.length; }
-  return result;
+  return [...local, ...central, end];
 }
 
 test("stored ZIP reads only audio/text and preserves Unicode paths and UTF-8 bytes", async () => {
@@ -153,12 +195,45 @@ test("malformed UTF-8 ZIP filenames and ZIP64 headers reject before decoding", a
 });
 
 test("selection size limits are checked before reading file buffers", async () => {
-  const oversized = { name: "chat.zip", size: MAX_INPUT_BYTES + 1, arrayBuffer() { throw new Error("Must not read oversized file"); } };
-  await assert.rejects(readExport(oversized), /100 MiB input limit/u);
   let reads = 0;
-  const files = ["one.opus", "two.opus"].map((name) => ({ name, size: MAX_INPUT_BYTES / 2 + 1, async arrayBuffer() { reads += 1; return new ArrayBuffer(0); } }));
-  await assert.rejects(readFiles(files), /100 MiB input limit/u);
+  const large = (name, size) => ({ name, size, async arrayBuffer() { reads += 1; return new ArrayBuffer(0); } });
+  const files = ["one.opus", "two.opus"].map((name) => large(name, MAX_EXTRACTED_BYTES / 2 + 1));
+  await assert.rejects(readFiles(files), /512 MiB limit/u);
+  // Photos and videos in the selection are skipped and do not count.
+  await assert.rejects(readFiles([large("video.mp4", 8 * MAX_EXTRACTED_BYTES), ...files]), /512 MiB limit/u);
   assert.equal(reads, 0);
+  const entries = await readFiles([large("video.mp4", 8 * MAX_EXTRACTED_BYTES), file("voice.opus", "audio")]);
+  assert.deepEqual(entries.map((entry) => entry.path), ["voice.opus"]);
+  assert.equal(reads, 0);
+});
+
+test("a multi-gigabyte ZIP is read by ranges without touching skipped media", async () => {
+  const chat = "[04/10/26, 10:00] Ana: voice.opus\r\n";
+  const voice = "Voice note ".repeat(4000);
+  const archive = sparseFile("export.zip", zipParts([
+    { name: "_chat.txt", data: chat, method: 8 },
+    { name: "video.mp4", hole: 3 * 1024 ** 3 },
+    { name: "voice.opus", data: voice },
+    { name: "photo.jpg", hole: 700 * 1024 ** 2 },
+  ]));
+  assert.ok(archive.size > 3.6 * 1024 ** 3);
+  const entries = await readFiles([archive]);
+  assert.deepEqual(entries.map((entry) => entry.path), ["_chat.txt", "voice.opus"]);
+  assert.equal(decode(entries[0].data), chat);
+  assert.equal(decode(entries[1].data), voice);
+  assert.ok(archive.bytesRead < 200 * 1024, `read ${archive.bytesRead} bytes`);
+});
+
+test("members that overlap skipped media or reach past the data region are rejected", async () => {
+  const parts = zipParts([{ name: "photo.jpg", data: "image-data" }, { name: "voice.opus", data: "audio" }]);
+  const overlapping = zip([{ name: "photo.jpg", data: "image-data" }, { name: "voice.opus", data: "audio" }]);
+  // Point the recording's directory entry at the photo's local header.
+  const directory = parts[0].length + parts[1].length + parts[2].length;
+  new DataView(overlapping.buffer).setUint32(directory + 42, 0, true);
+  await assert.rejects(readExport(file("chat.zip", overlapping)), /invalid local-file header|disagree|overlapping/u);
+  const outside = zip([{ name: "photo.jpg", data: "image-data" }]);
+  new DataView(outside.buffer).setUint32(parts[0].length + 20, 1 << 20, true);
+  await assert.rejects(readExport(file("chat.zip", outside)), /outside its data region/u);
 });
 
 test("multiple extracted files preserve folder context and skip unsupported media", async () => {
