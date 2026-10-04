@@ -24,10 +24,14 @@ LANGUAGES = ("en", "de", "fr", "es", "it", "nl", "pl")
 SAMPLE_RATE = 16000
 MAX_ZIP_BYTES = 8 * 1024**3
 DATE = r"\d{1,4}[./-]\d{1,2}[./-]\d{1,4}"
-TIME = r"\d{1,2}:\d{2}(?::\d{2})?(?:\s*(?:[aApP]\.?\s*[mM]\.?|[صم]|上午|下午|午前|午後))?"
+PERIOD = r"(?:[aApP]\.?\s*[mM]\.?|[صم]|上午|下午|午前|午後)"
+CLOCK = r"\d{1,2}[:：]\d{2}(?:[:：]\d{2})?"
+TIME = rf"(?:{PERIOD}\s*)?{CLOCK}(?:\s*{PERIOD})?"
 HEADER = re.compile(
-    rf"^(?:\[(?P<ios>{DATE},?\s+{TIME})\]\s*|(?P<android>{DATE},?\s+{TIME})\s+-\s+)(?P<body>.*)$"
+    rf"^(?:\[(?P<ios>{DATE}[,،]?\s*{TIME})\]\s*|(?P<android>{DATE}[,،]?\s+{TIME})\s+-\s+)(?P<body>.*)$"
 )
+SENDER = re.compile(r"[:：]\s")
+NEWLINE = re.compile(r"\r\n|\r|\n")
 INVISIBLE = str.maketrans("", "", "\ufeff\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069")
 
 
@@ -53,11 +57,12 @@ def parse_chat(text: str) -> list[Message]:
         clean = line.translate(INVISIBLE)
         match = HEADER.match(clean)
         if match:
-            sender, separator, body = match["body"].partition(": ")
+            body = match["body"]
+            separator = SENDER.search(body)
             messages.append(Message(
                 match["ios"] or match["android"],
-                sender if separator else None,
-                body if separator else match["body"],
+                body[:separator.start()] if separator else None,
+                body[separator.end():] if separator else body,
                 line_number,
             ))
         elif messages:
@@ -97,7 +102,8 @@ def open_export(source: Path, excluded: set[Path] | None = None):
                     relative = PurePosixPath(member.filename.replace("\\", "/"))
                     mode = member.external_attr >> 16
                     if (relative.is_absolute() or ".." in relative.parts
-                            or (relative.parts and ":" in relative.parts[0])
+                            # On Windows a drive-like component anywhere resets the path.
+                            or any(":" in part for part in relative.parts)
                             or stat.S_ISLNK(mode)):
                         raise ValueError(f"Unsafe ZIP entry: {member.filename}")
                     if member.is_dir() or relative.suffix.lower() not in AUDIO_EXTENSIONS | {".txt"}:
@@ -140,7 +146,9 @@ def index_messages(export: Export) -> tuple[dict[Path, list[dict]], dict[Path, s
     )
     for chat in export.chats:
         try:
-            text = chat.read_text(encoding="utf-8-sig")
+            # Decode the bytes directly: text mode would rewrite CRLF line endings
+            # and drop a leading BOM, and the annotated copy must keep both.
+            text = chat.read_bytes().decode("utf-8")
         except UnicodeError:
             print(f"Warning: skipping non-UTF-8 chat text: {chat.name}", file=sys.stderr)
             continue
@@ -240,16 +248,19 @@ def write_reports(output: Path, report: dict) -> None:
 
 def write_annotated_chat(destination: Path, chat: Path, text: str,
                          occurrences: dict, results: dict[Path, dict]) -> None:
+    # Inserted lines follow the chat's own line endings.
+    newline = NEWLINE.search(text)
+    newline = newline[0] if newline else "\n"
     lines = []
     for number, line in enumerate(text.splitlines(keepends=True)):
         lines.append(line)
         attached = occurrences.get((chat, number), [])
         if attached and not line.endswith(("\n", "\r")):
-            lines.append("\n")
+            lines.append(newline)
         for path in attached:
             result = results[path]
             transcript = result["text"] or (f"Error: {result['error']}" if result["status"] == "error" else "No speech detected")
-            lines.append(f"[Voice message transcript: {transcript}]\n")
+            lines.append(f"[Voice message transcript: {transcript}]{newline}")
     atomic_write(destination, "".join(lines))
 
 
