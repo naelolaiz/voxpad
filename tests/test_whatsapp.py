@@ -369,20 +369,55 @@ class AudioTests(unittest.TestCase):
                 mock.patch.object(subprocess, "run", side_effect=AssertionError("Decoding must not invoke subprocesses")):
             result = self.transcribe(audio, model, language="es", keywords=["José"], word_timestamps=True)
 
-        self.assertEqual([len(call["samples"]) for call in model.calls], [480000, 480000, frame_count - 960000])
+        # Chunks end within the last five of their 30 seconds, and cover every frame once.
+        lengths = [len(call["samples"]) for call in model.calls]
+        self.assertEqual(len(lengths), 3)
+        self.assertEqual(sum(lengths), frame_count)
+        for length in lengths[:-1]:
+            self.assertGreater(length, 25 * app.SAMPLE_RATE)
+            self.assertLessEqual(length, 30 * app.SAMPLE_RATE)
         normalized_original = np.frombuffer(original, dtype="<i2").astype(np.float32) / np.float32(32768)
         np.testing.assert_array_equal(np.concatenate([call["samples"] for call in model.calls]), normalized_original)
         self.assertEqual(result["text"], "part 1 part 2 part 3")
         self.assertEqual(result["languages"], ["en", "es"])
         self.assertAlmostEqual(result["duration_seconds"], frame_count / app.SAMPLE_RATE)
-        self.assertEqual([(segment["start"], segment["end"]) for segment in result["segments"]], [(0, 30), (30, 60), (60, frame_count / app.SAMPLE_RATE)])
-        self.assertEqual([word["start"] for word in result["words"]], [0.1, 30.1, 60.1])
-        self.assertEqual([word["end"] for word in result["words"]], [0.25, 30.25, 60.25])
+        starts = [sum(lengths[:number]) / app.SAMPLE_RATE for number in range(3)]
+        ends = [sum(lengths[:number + 1]) / app.SAMPLE_RATE for number in range(3)]
+        self.assertEqual([(segment["start"], segment["end"]) for segment in result["segments"]], list(zip(starts, ends)))
+        self.assertEqual([word["start"] for word in result["words"]], [0.1 + start for start in starts])
+        self.assertEqual([word["end"] for word in result["words"]], [0.25 + start for start in starts])
         self.assertEqual([word["probability"] for word in result["words"]], [0.9, 0.9, 0.9])
         for call in model.calls:
             self.assertEqual(call["samples"].ndim, 1)
             self.assertEqual(call["samples"].dtype, np.dtype("float32"))
             self.assertEqual(call["options"], {"language": "es", "keywords": ["José"], "word_timestamps": True})
+
+    def test_long_recording_is_cut_inside_pauses_near_the_chunk_limit(self):
+        rate = app.SAMPLE_RATE
+        # The phase keeps the tone away from zero where the pauses below end.
+        tone = np.sin(np.arange(61 * rate) * (2 * np.pi * 440 / rate) + 1) * 0.2
+        for start, end in ((27 * rate, 27 * rate + rate // 2), (883200, 889600), (10 * rate, 12 * rate)):
+            tone[start:end] = 0
+        audio = self.root / "pauses.wav"
+        with wave.open(str(audio), "wb") as recording:
+            recording.setnchannels(1)
+            recording.setsampwidth(2)
+            recording.setframerate(rate)
+            recording.writeframes((tone * 32767).astype("<i2").tobytes())
+        model = FakeWhistle()
+        result = self.transcribe(audio, model)
+        # Each cut is the middle of the last silent tenth of a second: 27.45 s and
+        # 55.55 s. The pause at 10 s is too far from the limit to be used.
+        self.assertEqual([len(call["samples"]) for call in model.calls], [439200, 449600, 87200])
+        self.assertEqual([(segment["start"], segment["end"]) for segment in result["segments"]], [(0, 27.45), (27.45, 55.55), (55.55, 61)])
+
+    def test_short_chunks_and_exact_fits_keep_their_limits(self):
+        samples = np.zeros(3 * app.SAMPLE_RATE, dtype=np.float32)
+        self.assertEqual(app.chunk_end(samples, 0, 3 * app.SAMPLE_RATE), len(samples))
+        self.assertEqual(app.chunk_end(samples, app.SAMPLE_RATE, 30 * app.SAMPLE_RATE), len(samples))
+        # A chunk too short to search for a pause is cut at its limit.
+        self.assertEqual(app.chunk_end(samples, 0, 1600), 1600)
+        self.assertEqual(app.chunk_end(samples, 0, 1), 1)
 
     def test_decoder_converts_stereo_to_16khz_mono_float32(self):
         audio = self.root / "stereo.wav"
@@ -431,6 +466,10 @@ class AudioTests(unittest.TestCase):
         constructor.assert_called_once()
         report = json.loads(output.read_text(encoding="utf-8"))
         results = {result["file"]: result for result in report["results"]}
+        # Reports name the input but never say where it is stored.
+        self.assertEqual(report["source"], "chat.txt")
+        self.assertNotIn(str(self.root), output.read_text(encoding="utf-8"))
+        self.assertNotIn(str(self.root), output.with_suffix(".txt").read_text(encoding="utf-8"))
         self.assertEqual(results["voice.wav"]["text"], "part 1")
         self.assertEqual(results["voice.wav"]["messages"][0]["sender"], "José")
         self.assertEqual(results["broken.opus"]["status"], "error")

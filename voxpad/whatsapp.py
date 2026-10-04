@@ -22,6 +22,9 @@ import zipfile
 AUDIO_EXTENSIONS = {".opus", ".ogg", ".oga", ".m4a", ".aac", ".mp3", ".wav", ".flac", ".amr", ".aif", ".aiff"}
 LANGUAGES = ("en", "de", "fr", "es", "it", "nl", "pl")
 SAMPLE_RATE = 16000
+# A chunk ends at the quietest tenth of a second within its last five seconds.
+BOUNDARY_SEARCH_SECONDS = 5
+BOUNDARY_WINDOW_SECONDS = 0.1
 MAX_ZIP_BYTES = 8 * 1024**3
 DATE = r"\d{1,4}[./-]\d{1,2}[./-]\d{1,4}"
 PERIOD = r"(?:[aApP]\.?\s*[mM]\.?|[صم]|上午|下午|午前|午後)"
@@ -176,6 +179,27 @@ def index_messages(export: Export) -> tuple[dict[Path, list[dict]], dict[Path, s
     return contexts, texts, occurrences
 
 
+def chunk_end(samples, start: int, chunk_frames: int) -> int:
+    """Return where the chunk starting at `start` ends.
+
+    A chunk that cannot hold the rest of the recording ends at its quietest
+    moment, so fewer words are cut.
+    """
+    limit = start + chunk_frames
+    if limit >= len(samples):
+        return len(samples)
+    window = int(BOUNDARY_WINDOW_SECONDS * SAMPLE_RATE)
+    search = min(int(BOUNDARY_SEARCH_SECONDS * SAMPLE_RATE), chunk_frames // 2)
+    if search <= window:
+        return limit
+    first = limit - search
+    energy = (samples[first:limit].astype("float64") ** 2).cumsum()
+    energy = energy[window:] - energy[:-window]
+    # Of equally quiet windows take the latest, which keeps chunks long.
+    quietest = len(energy) - 1 - int(energy[::-1].argmin())
+    return first + quietest + 1 + window // 2
+
+
 def transcribe_audio(path: Path, model, *, chunk_seconds: float,
                      language: str | None, keywords: list[str], word_timestamps: bool,
                      decoder=None) -> dict:
@@ -196,8 +220,9 @@ def transcribe_audio(path: Path, model, *, chunk_seconds: float,
         raise ValueError("Audio file contains no samples.")
     segments, words = [], []
     chunk_frames = max(1, int(chunk_seconds * SAMPLE_RATE))
-    for offset in range(0, total_frames, chunk_frames):
-        frames = samples[offset:offset + chunk_frames]
+    offset = 0
+    while offset < total_frames:
+        frames = samples[offset:chunk_end(samples, offset, chunk_frames)]
         result = model.transcribe(
             frames, language=language, keywords=keywords or None,
             word_timestamps=word_timestamps,
@@ -209,6 +234,7 @@ def transcribe_audio(path: Path, model, *, chunk_seconds: float,
         if word_timestamps:
             for word in result.get("words", []):
                 words.append({**word, "start": word["start"] + start, "end": word["end"] + start})
+        offset += len(frames)
     detected = list(dict.fromkeys(segment["language"] for segment in segments if segment["language"]))
     transcript = {
         "text": " ".join(segment["text"] for segment in segments if segment["text"]),
@@ -277,7 +303,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--keyword", action="append", default=[], help="Favor a name or phrase; may be repeated")
     parser.add_argument("--word-timestamps", action="store_true", help="Include word times and probabilities in JSON")
     parser.add_argument("--model", type=Path, help="Use a local whistle.cact model instead of the default download")
-    parser.add_argument("--chunk-seconds", type=float, default=30, help="Chunk length, greater than 0 and at most 30 (default: 30)")
+    parser.add_argument("--chunk-seconds", type=float, default=30, help="Longest chunk, greater than 0 and at most 30 (default: 30)")
     parser.add_argument("--dry-run", action="store_true", help="List audio and associated messages without loading Whistle or writing files")
     return parser
 
@@ -342,7 +368,8 @@ def main(argv: list[str] | None = None) -> int:
                 raise RuntimeError("Install the Python dependencies: python -m pip install -r requirements.txt") from error
             print("Loading Whistle (the first run downloads model/runtime files)...", file=sys.stderr)
             model = Whistle(weights=str(args.model.expanduser().resolve()) if args.model else None)
-            report = {"source": str(source), "model": "Cactus Whistle", "sample_rate": SAMPLE_RATE,
+            # Reports get shared: name the input without revealing where it is stored.
+            report = {"source": source.name, "model": "Cactus Whistle", "sample_rate": SAMPLE_RATE,
                       "chunk_seconds": args.chunk_seconds, "results": []}
             results: dict[Path, dict] = {}
             for number, path in enumerate(export.audio, 1):
@@ -355,8 +382,9 @@ def main(argv: list[str] | None = None) -> int:
                         language=args.language, keywords=args.keyword, word_timestamps=args.word_timestamps,
                     ))
                 except (OSError, ValueError, RuntimeError, EOFError) as error:
-                    result.update(status="error", error=str(error))
                     print(f"  Error: {error}", file=sys.stderr)
+                    # Decoder and system messages may quote the full local path.
+                    result.update(status="error", error=str(error).replace(str(path), filename))
                 report["results"].append(result)
                 results[path] = result
                 # Save after each recording so completed work survives interruption.
