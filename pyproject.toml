@@ -17,8 +17,15 @@ dev = ["build>=1.2"]
 [project.scripts]
 voxpad = "voxpad.whatsapp:cli"
 
+[project.gui-scripts]
+voxpad-app = "voxpad.gui:main"
+
 [tool.setuptools.packages.find]
 include = ["voxpad*"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
+
+# Dependencies are read from requirements.txt, so uv must notice when it changes.
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { file = "requirements.txt" }]

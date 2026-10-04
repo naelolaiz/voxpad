@@ -71,6 +71,14 @@ Unrecognized chat formats still allow audio transcription, with empty message me
 
 You can also run `python -m voxpad` with the same arguments. For source-only use without installing the command, install `requirements.txt` and run the module from the repository root.
 
+## Desktop application
+
+`voxpad-app` opens a window that does the same without the command line: choose an export ZIP, folder, chat `.txt` or audio file, or drop it on the window, pick the language and model, and press Transcribe. It shows the conversation with each voice message transcribed in place and saves `transcripts.json`, `transcripts.txt` and `chat_with_transcripts.txt` in a new folder beside the export, which you can change. Stop finishes the current voice message and keeps what is done.
+
+The application uses the same local Whisper models as the command. Its window is built with Qt through [PySide6](https://pypi.org/project/PySide6/), which is installed with the other dependencies; nothing has to be installed separately on a desktop system. A minimal Linux installation without a desktop may lack the system libraries Qt loads, such as `libEGL`, `libGL`, `libxkbcommon`, `fontconfig` and `dbus`. You can also start it with `python -m voxpad.gui` or `python voxpad/gui.py`, optionally followed by the export to open.
+
+If you use uv and a dependency seems to be missing after pulling changes, run `uv sync`. Dependencies are declared in `requirements.txt`, and the project tells uv to watch that file.
+
 ## Development
 
 The `voxpad/` package contains the application, and `tests/` contains the test suite. `pyproject.toml` defines package metadata, dependencies and the `voxpad` command. Install the development tools in your virtual environment:
