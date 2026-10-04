@@ -1,0 +1,1 @@
+`speech.opus.base64` is synthetic test speech generated with eSpeak and encoded as Ogg/Opus. It says: “Hello, this is a voice message. We will meet tomorrow.” It contains no real conversation or personal recording. The browser test decodes it and runs the actual Whistle WebAssembly model.

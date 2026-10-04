@@ -87,6 +87,26 @@ Builds use the standard Python build frontend (`python -m build`) and produce a 
 
 GitHub Actions runs tests on Linux, Windows and both Intel and Apple Silicon macOS, builds distributions, and checks that the wheel and source archive install and expose the CLI. Download the `python-distributions` artifact from a successful workflow run. Package publishing is not configured.
 
+## Browser app
+
+`web/` contains a static browser app that does the same job without installing anything: drop a WhatsApp export ZIP, or a chat `.txt` with its audio files, and download the conversation with each voice message transcribed in place, as text and as JSON. It is published to GitHub Pages from `main`.
+
+Everything runs in the browser tab. The export is read, decoded and transcribed locally with Whistle compiled to WebAssembly; no chat text, audio, filenames or transcripts are uploaded. The first transcription downloads the Whistle model and runtime (about 17 MB) from Hugging Face and caches them in the browser. Voice messages of any length are transcribed in full: as in the command-line tool, each recording is sent to Whistle in consecutive 30-second chunks, so words cut by a chunk boundary may be less accurate. Inputs are limited to 100 MiB, and ZIP64 and encrypted archives are unsupported.
+
+Develop it with Node.js 22.12 or newer:
+
+```bash
+cd web
+npm ci
+npm run dev          # local development server
+npm test             # unit tests
+npm run build        # production build in web/dist
+npx playwright install chromium
+npm run test:browser # end-to-end tests against the production build
+```
+
+The browser tests run the real Whistle model on a synthetic recording, so their first run downloads the model and runtime into `web/node_modules/.cache/whistle`. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to use an existing Chromium.
+
 ## Roadmap
 
 Real-time microphone capture and dictation are planned, with desktop support across Linux, macOS and Windows as the initial target. Live dictation and typing into other applications are not implemented yet.
