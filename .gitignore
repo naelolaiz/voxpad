@@ -1,0 +1,42 @@
+# Python environments, caches and build products
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Local tooling and credentials
+.agents/
+.codex/
+.aws/
+.env
+.env.*
+
+# Generated transcripts and local audio/model data
+results/
+transcripts.json
+transcripts.txt
+chat_transcribed.txt
+*.cact
+*.zip
+*.opus
+*.ogg
+*.oga
+*.m4a
+*.aac
+*.mp3
+*.wav
+*.flac
+*.amr
+*.aif
+*.aiff
+
+# OS metadata
+.DS_Store
+Thumbs.db
