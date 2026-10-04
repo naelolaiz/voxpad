@@ -14,7 +14,7 @@ concurrency:
 
 env:
   DO_NOT_TRACK: "1"
-  NEEDLE_TELEMETRY: "0"
+  HF_HUB_DISABLE_TELEMETRY: "1"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PYTHONUTF8: "1"
 
@@ -28,6 +28,13 @@ jobs:
       matrix:
         os: [ubuntu-24.04, windows-2025, macos-15-intel, macos-15]
         python: ["3.10", "3.14"]
+        # The speech runtime has no Intel macOS build for Python 3.14.
+        exclude:
+          - os: macos-15-intel
+            python: "3.14"
+        include:
+          - os: macos-15-intel
+            python: "3.13"
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -108,7 +115,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.14"
+          # The speech runtime has no Intel macOS build for Python 3.14.
+          python-version: ${{ matrix.os == 'macos-15-intel' && '3.13' || '3.14' }}
       - name: Download built distributions
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -147,7 +155,7 @@ jobs:
   web:
     name: Test and build browser app
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       CI: "true"
     defaults:
@@ -170,8 +178,8 @@ jobs:
       - name: Cache the speech model used by browser tests
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: web/node_modules/.cache/whistle
-          key: whistle-assets-${{ hashFiles('web/tests/browser/assets.js') }}
+          path: web/node_modules/.cache/whisper
+          key: whisper-assets-${{ hashFiles('web/src/models.js', 'web/tests/browser/assets.js') }}
       - name: Run browser application unit tests
         run: npm test
       - name: Build browser application

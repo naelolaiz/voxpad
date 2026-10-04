@@ -1,4 +1,4 @@
-"""Tests run without downloading Whistle models or invoking inference."""
+"""Tests run without downloading Whisper models or invoking inference."""
 
 from contextlib import redirect_stderr, redirect_stdout
 import builtins
@@ -42,7 +42,7 @@ def write_wav(path, *, frames=16000, sample_rate=16000, channels=1):
     return audio
 
 
-class FakeWhistle:
+class FakeWhisper:
     """Capture actual audio sent to the backend and return predictable text/times."""
 
     def __init__(self):
@@ -271,16 +271,16 @@ class ExportTests(unittest.TestCase):
         self.touch("chat.txt", b"01/10/26, 10:00 - Ana: voice.opus (attached)\n")
         output = self.root / "results.json"
         annotated = self.root / "annotated.txt"
-        constructor = mock.Mock(side_effect=AssertionError("Whistle must not load"))
+        constructor = mock.Mock(side_effect=AssertionError("Whisper must not load"))
         stdout = io.StringIO()
         original_import = builtins.__import__
 
         def guarded_import(name, *args, **kwargs):
-            if name.split(".")[0] in {"needle", "codecpod", "numpy"}:
+            if name.split(".")[0] in {"faster_whisper", "ctranslate2", "codecpod", "numpy"}:
                 raise AssertionError(f"Dry run must not import {name}")
             return original_import(name, *args, **kwargs)
 
-        with mock.patch.dict(sys.modules, {"needle": types.SimpleNamespace(Whistle=constructor)}), \
+        with mock.patch.object(app, "Whisper", constructor), \
                 mock.patch.object(builtins, "__import__", side_effect=guarded_import), \
                 mock.patch.object(subprocess, "run", side_effect=AssertionError("Dry run must not invoke subprocesses")), \
                 redirect_stdout(stdout):
@@ -339,6 +339,34 @@ class ExportTests(unittest.TestCase):
             ])
         self.assertEqual(code, 0)
 
+    def test_whisper_adapter_passes_options_and_collects_text_and_words(self):
+        calls = []
+        word = types.SimpleNamespace(word=" hola", start=0.1, end=0.4, probability=0.9)
+
+        class FakeModel:
+            def __init__(self, name, **options):
+                calls.append((name, options))
+
+            def transcribe(self, samples, **options):
+                calls.append(options)
+                segments = [types.SimpleNamespace(text=" Hola", words=[word]), types.SimpleNamespace(text=" mundo.", words=None)]
+                return iter(segments), types.SimpleNamespace(language="es")
+
+        with mock.patch.dict(sys.modules, {"faster_whisper": types.SimpleNamespace(WhisperModel=FakeModel)}):
+            model = app.Whisper("small")
+        result = model.transcribe([0.0], language="es", keywords=["José", "Ana"], word_timestamps=True)
+        self.assertEqual(calls[0], ("small", {"device": "auto", "compute_type": "auto"}))
+        self.assertEqual(calls[1], {
+            "language": "es", "hotwords": "José Ana", "word_timestamps": True, "condition_on_previous_text": False,
+        })
+        self.assertEqual(result, {
+            "text": "Hola mundo.", "language": "es",
+            "words": [{"word": "hola", "start": 0.1, "end": 0.4, "probability": 0.9}],
+        })
+        plain = model.transcribe([0.0])
+        self.assertNotIn("words", plain)
+        self.assertIsNone(calls[2]["hotwords"])
+
     def test_invalid_chunk_sizes_are_rejected_before_loading_backend(self):
         audio = self.touch("voice.opus")
         for size in ("0", "-1", "30.01", "nan", "inf"):
@@ -364,7 +392,7 @@ class AudioTests(unittest.TestCase):
         audio = self.root / "long.wav"
         frame_count = 61 * app.SAMPLE_RATE + 4007
         original = write_wav(audio, frames=frame_count)
-        model = FakeWhistle()
+        model = FakeWhisper()
         with mock.patch.object(app.tempfile, "TemporaryDirectory", side_effect=AssertionError("Audio chunks must stay in memory")), \
                 mock.patch.object(subprocess, "run", side_effect=AssertionError("Decoding must not invoke subprocesses")):
             result = self.transcribe(audio, model, language="es", keywords=["José"], word_timestamps=True)
@@ -404,7 +432,7 @@ class AudioTests(unittest.TestCase):
             recording.setsampwidth(2)
             recording.setframerate(rate)
             recording.writeframes((tone * 32767).astype("<i2").tobytes())
-        model = FakeWhistle()
+        model = FakeWhisper()
         result = self.transcribe(audio, model)
         # Each cut is the middle of the last silent tenth of a second: 27.45 s and
         # 55.55 s. The pause at 10 s is too far from the limit to be used.
@@ -422,7 +450,7 @@ class AudioTests(unittest.TestCase):
     def test_decoder_converts_stereo_to_16khz_mono_float32(self):
         audio = self.root / "stereo.wav"
         write_wav(audio, frames=44100, sample_rate=44100, channels=2)
-        model = FakeWhistle()
+        model = FakeWhisper()
         result = self.transcribe(audio, model)
         self.assertEqual(len(model.calls), 1)
         self.assertEqual(model.calls[0]["samples"].shape, (16000,))
@@ -434,7 +462,7 @@ class AudioTests(unittest.TestCase):
     def test_decode_failure_does_not_invoke_model(self):
         audio = self.root / "broken.opus"
         audio.write_bytes(b"not a recording")
-        model = FakeWhistle()
+        model = FakeWhisper()
         with self.assertRaisesRegex(RuntimeError, "decode"):
             self.transcribe(audio, model)
         self.assertEqual(model.calls, [])
@@ -443,7 +471,7 @@ class AudioTests(unittest.TestCase):
         audio = self.root / "empty.wav"
         write_wav(audio, frames=0)
         with self.assertRaisesRegex(ValueError, "no samples"):
-            self.transcribe(audio, FakeWhistle())
+            self.transcribe(audio, FakeWhisper())
 
     def test_main_writes_unicode_reports_and_annotated_chat_while_preserving_failures(self):
         audio = self.root / "voice.wav"
@@ -457,9 +485,9 @@ class AudioTests(unittest.TestCase):
         chat.write_bytes(original.encode("utf-8"))
         output = self.root / "reports/results.json"
         annotated = self.root / "reports/annotated.txt"
-        model = FakeWhistle()
+        model = FakeWhisper()
         constructor = mock.Mock(return_value=model)
-        with mock.patch.dict(sys.modules, {"needle": types.SimpleNamespace(Whistle=constructor)}), \
+        with mock.patch.object(app, "Whisper", constructor), \
                 redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
             code = app.main([str(chat), "-o", str(output), "--chat-output", str(annotated), "--language", "es"])
         self.assertEqual(code, 1)
@@ -468,6 +496,8 @@ class AudioTests(unittest.TestCase):
         results = {result["file"]: result for result in report["results"]}
         # Reports name the input but never say where it is stored.
         self.assertEqual(report["source"], "chat.txt")
+        constructor.assert_called_once_with("large-v3-turbo")
+        self.assertEqual(report["model"], "Whisper large-v3-turbo")
         self.assertNotIn(str(self.root), output.read_text(encoding="utf-8"))
         self.assertNotIn(str(self.root), output.with_suffix(".txt").read_text(encoding="utf-8"))
         self.assertEqual(results["voice.wav"]["text"], "part 1")
@@ -493,7 +523,7 @@ class AudioTests(unittest.TestCase):
         source = np.sin(np.arange(2 * app.SAMPLE_RATE, dtype=np.float32) * np.float32(2 * np.pi * 440 / app.SAMPLE_RATE)) * np.float32(0.2)
         audio = self.root / filename
         codecpod.save(str(audio), source, app.SAMPLE_RATE, codec)
-        model = FakeWhistle()
+        model = FakeWhisper()
         with mock.patch.object(subprocess, "run", side_effect=AssertionError("Decoding must not invoke subprocesses")):
             result = self.transcribe(audio, model)
         self.assertEqual(len(model.calls), 1)

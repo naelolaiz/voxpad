@@ -1,6 +1,6 @@
 """VoxPad transcription of audio files and WhatsApp voice messages.
 
-Requires cactus-needle and codecpod. Run with --help for examples and options.
+Requires faster-whisper and codecpod. Run with --help for examples and options.
 """
 
 import argparse
@@ -20,7 +20,12 @@ import zipfile
 
 
 AUDIO_EXTENSIONS = {".opus", ".ogg", ".oga", ".m4a", ".aac", ".mp3", ".wav", ".flac", ".amr", ".aif", ".aiff"}
-LANGUAGES = ("en", "de", "fr", "es", "it", "nl", "pl")
+LANGUAGES = tuple((
+    "af am ar as az ba be bg bn bo br bs ca cs cy da de el en es et eu fa fi fo fr gl gu haw ha he hi hr ht hu hy id is "
+    "it ja jw ka kk km kn ko la lb ln lo lt lv mg mi mk ml mn mr ms mt my ne nl nn no oc pa pl ps pt ro ru sa sd si sk "
+    "sl sn so sq sr su sv sw ta te tg th tk tl tr tt uk ur uz vi yi yo zh"
+).split())
+DEFAULT_MODEL = "large-v3-turbo"
 SAMPLE_RATE = 16000
 # A chunk ends at the quietest tenth of a second within its last five seconds.
 BOUNDARY_SEARCH_SECONDS = 5
@@ -96,7 +101,7 @@ def open_export(source: Path, excluded: set[Path] | None = None):
     if source.is_dir():
         yield scan_export(source, excluded)
     elif source.suffix.lower() == ".zip":
-        with tempfile.TemporaryDirectory(prefix="whistle-export-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="voxpad-export-") as temporary:
             root = Path(temporary)
             seen: set[str] = set()
             extracted_bytes = 0
@@ -177,6 +182,35 @@ def index_messages(export: Export) -> tuple[dict[Path, list[dict]], dict[Path, s
                 })
                 occurrences.setdefault((chat, message.end_line), []).append(path)
     return contexts, texts, occurrences
+
+
+class Whisper:
+    """Run a Whisper model through faster-whisper, one chunk of audio at a time."""
+
+    def __init__(self, model: str = DEFAULT_MODEL):
+        try:
+            from faster_whisper import WhisperModel
+        except ImportError as error:
+            raise RuntimeError("Install the Python dependencies: python -m pip install -r requirements.txt") from error
+        # Uses a GPU when one is available, and the fastest number format the device supports.
+        self._model = WhisperModel(model, device="auto", compute_type="auto")
+
+    def transcribe(self, samples, *, language: str | None = None, keywords: list[str] | None = None,
+                   word_timestamps: bool = False) -> dict:
+        segments, info = self._model.transcribe(
+            samples, language=language, hotwords=" ".join(keywords) if keywords else None,
+            word_timestamps=word_timestamps,
+            # Chunks are independent; earlier text must not steer or repeat into later ones.
+            condition_on_previous_text=False,
+        )
+        segments = list(segments)
+        result = {"text": "".join(segment.text for segment in segments).strip(), "language": info.language}
+        if word_timestamps:
+            result["words"] = [
+                {"word": word.word.strip(), "start": word.start, "end": word.end, "probability": word.probability}
+                for segment in segments for word in segment.words or []
+            ]
+        return result
 
 
 def chunk_end(samples, start: int, chunk_frames: int) -> int:
@@ -293,18 +327,18 @@ def write_annotated_chat(destination: Path, chat: Path, text: str,
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="voxpad",
-        description="VoxPad: transcribe audio files and exported WhatsApp voice messages locally with Cactus Whistle.",
+        description="VoxPad: transcribe audio files and exported WhatsApp voice messages locally with OpenAI Whisper.",
         epilog="Example: voxpad chat.zip --language es -o transcripts.json",
     )
     parser.add_argument("source", type=Path, help="Export ZIP, extracted folder, chat .txt, or a single audio file")
     parser.add_argument("-o", "--output", type=Path, default=Path("transcripts.json"), help="JSON output; also writes a matching .txt report (default: transcripts.json)")
     parser.add_argument("--chat-output", type=Path, help="Write a copy of the chat with transcripts inserted (requires exactly one chat .txt)")
-    parser.add_argument("--language", choices=LANGUAGES, help="Force the spoken language; default: auto-detect for each chunk")
+    parser.add_argument("--language", choices=LANGUAGES, metavar="CODE", help="Force the spoken language, as a Whisper code such as es or en; default: auto-detect for each chunk")
     parser.add_argument("--keyword", action="append", default=[], help="Favor a name or phrase; may be repeated")
     parser.add_argument("--word-timestamps", action="store_true", help="Include word times and probabilities in JSON")
-    parser.add_argument("--model", type=Path, help="Use a local whistle.cact model instead of the default download")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Whisper model name, or a folder with a converted model (default: {DEFAULT_MODEL})")
     parser.add_argument("--chunk-seconds", type=float, default=30, help="Longest chunk, greater than 0 and at most 30 (default: 30)")
-    parser.add_argument("--dry-run", action="store_true", help="List audio and associated messages without loading Whistle or writing files")
+    parser.add_argument("--dry-run", action="store_true", help="List audio and associated messages without loading Whisper or writing files")
     return parser
 
 
@@ -327,8 +361,6 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("Output paths must differ from the input")
     if not source.exists():
         parser.error(f"Input does not exist: {source}")
-    if args.model and not args.model.expanduser().is_file():
-        parser.error(f"Model does not exist: {args.model}")
     try:
         with open_export(source) as export:
             # Check original inputs before hiding any output from discovery.
@@ -358,18 +390,18 @@ def main(argv: list[str] | None = None) -> int:
                     for message in contexts[path]:
                         print(f"  {message['timestamp']} | {message['sender'] or '(system message)'}")
                 return 0
-            # Keep inference local and disable the runtime's optional usage telemetry.
-            os.environ["NEEDLE_TELEMETRY"] = "0"
+            # Keep inference local and disable the model hub's optional usage telemetry.
+            os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
             os.environ["DO_NOT_TRACK"] = "1"
             try:
                 import codecpod
-                from needle import Whistle
             except ImportError as error:
                 raise RuntimeError("Install the Python dependencies: python -m pip install -r requirements.txt") from error
-            print("Loading Whistle (the first run downloads model/runtime files)...", file=sys.stderr)
-            model = Whistle(weights=str(args.model.expanduser().resolve()) if args.model else None)
+            print(f"Loading Whisper {args.model} (the first run downloads the model)...", file=sys.stderr)
+            model = Whisper(args.model)
             # Reports get shared: name the input without revealing where it is stored.
-            report = {"source": source.name, "model": "Cactus Whistle", "sample_rate": SAMPLE_RATE,
+            model_name = Path(args.model).name if Path(args.model).is_dir() else args.model
+            report = {"source": source.name, "model": f"Whisper {model_name}", "sample_rate": SAMPLE_RATE,
                       "chunk_seconds": args.chunk_seconds, "results": []}
             results: dict[Path, dict] = {}
             for number, path in enumerate(export.audio, 1):

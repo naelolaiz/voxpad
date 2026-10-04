@@ -3,10 +3,11 @@ import { readFiles } from './archive.js';
 import { indexMessages, annotatedChat, createReport } from './chat.js';
 import { decodeAudio } from './audio.js';
 import { Transcriber } from './transcriber.js';
+import { LANGUAGES } from './models.js';
 
 const elements = Object.fromEntries([
   'files', 'dropzone', 'selection', 'source-name', 'source-summary', 'clear',
-  'language', 'start', 'cancel', 'progress-panel', 'progress-message', 'progress-count',
+  'language', 'model', 'start', 'cancel', 'progress-panel', 'progress-message', 'progress-count',
   'progress', 'error', 'warnings', 'results', 'result-summary', 'chat-choice',
   'chat-select', 'chat-preview', 'audio-list', 'download-log', 'download-json',
 ].map((id) => [id, document.getElementById(id)]));
@@ -18,6 +19,26 @@ let busy = false;
 let generation = 0;
 let currentAudio = 0;
 let stage = '';
+let usedModel = null;
+
+// Offer every language Whisper recognizes, by name where the browser knows it.
+const languageNames = new Intl.DisplayNames(['en'], { type: 'language' });
+const languageName = (code) => {
+  try {
+    const name = languageNames.of(code === 'jw' ? 'jv' : code);
+    return name && name !== code ? name : code;
+  } catch {
+    return code;
+  }
+};
+elements.language.append(...LANGUAGES.map((code) => [languageName(code), code])
+  .sort(([left], [right]) => left.localeCompare(right))
+  .map(([name, code]) => {
+    const option = document.createElement('option');
+    option.value = code;
+    option.textContent = name;
+    return option;
+  }));
 
 const transcriber = new Transcriber({ onProgress: ({ message, fraction }) => {
   if (!busy) return;
@@ -33,7 +54,7 @@ const transcriber = new Transcriber({ onProgress: ({ message, fraction }) => {
 
 function setBusy(value) {
   busy = value;
-  for (const id of ['files', 'clear', 'language']) elements[id].disabled = value;
+  for (const id of ['files', 'clear', 'language', 'model']) elements[id].disabled = value;
   elements.start.disabled = value || !index;
   elements.dropzone.classList.toggle('busy', value);
   elements.cancel.hidden = !value || stage === 'import';
@@ -56,6 +77,7 @@ function reset() {
   transcriber.cancel();
   index = null;
   results = new Map();
+  usedModel = null;
   sourceName = '';
   elements.files.value = '';
   for (const id of ['selection', 'results', 'progress-panel', 'error', 'warnings']) elements[id].hidden = true;
@@ -136,7 +158,7 @@ function renderResults() {
   const success = [...results.values()].filter((result) => result.status === 'ok').length;
   const failed = [...results.values()].filter((result) => result.status === 'error').length;
   const pending = results.size - success - failed;
-  elements['result-summary'].textContent = `${success} transcribed${failed ? ` · ${failed} failed` : ''}${pending ? ` · ${pending} pending` : ''}. Originals preserved.`;
+  elements['result-summary'].textContent = `${success} transcribed${failed ? ` · ${failed} failed` : ''}${pending ? ` · ${pending} pending` : ''}. Originals preserved.${usedModel ? ` Transcribed with ${usedModel.name}.` : ''}`;
   const text = logText();
   const limit = 60000;
   elements['chat-preview'].textContent = text.length > limit ? `${text.slice(0, limit)}\n\n[Preview shortened. Downloads contain the complete chat.]` : text;
@@ -163,11 +185,14 @@ async function transcribe() {
   stage = 'model';
   setBusy(true);
   elements['progress-panel'].hidden = false;
-  elements['progress-message'].textContent = index.audio.length ? 'Preparing Whistle…' : 'Preparing your downloads…';
+  elements['progress-message'].textContent = index.audio.length ? 'Preparing Whisper…' : 'Preparing your downloads…';
   elements['progress-count'].textContent = '';
   elements.progress.value = 0;
   try {
-    if (index.audio.length) await transcriber.init(language);
+    if (index.audio.length) {
+      await transcriber.init(language, { model: elements.model.value || undefined });
+      usedModel = transcriber.model;
+    }
     for (let number = 0; number < index.audio.length; number += 1) {
       if (generation !== run) return;
       const audio = index.audio[number];
@@ -230,7 +255,7 @@ elements['chat-select'].addEventListener('change', renderResults);
 elements['download-log'].addEventListener('click', () => download(logText(), 'txt', 'text/plain;charset=utf-8'));
 elements['download-json'].addEventListener('click', () => {
   const report = createReport(index, results, sourceName);
-  report.model = { name: 'Whistle', runtime: 'WebAssembly' };
+  report.model = usedModel || { name: 'Whisper' };
   download(JSON.stringify(report, null, 2) + '\n', 'json', 'application/json;charset=utf-8');
 });
 for (const event of ['dragenter', 'dragover']) elements.dropzone.addEventListener(event, (e) => {
