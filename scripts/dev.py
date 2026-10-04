@@ -15,12 +15,13 @@ def run(*arguments: str) -> int:
 
 
 def test() -> int:
-    # Audio tests otherwise skip when dependencies are absent. CI must run them.
+    # Audio and window tests otherwise skip when dependencies are absent. CI must run them.
     try:
         import codecpod  # noqa: F401
         import numpy  # noqa: F401
+        from PySide6 import QtWidgets  # noqa: F401
     except ImportError as error:
-        print(f"Audio test dependency missing: {error}", file=sys.stderr)
+        print(f"Test dependency missing: {error}", file=sys.stderr)
         print('Install dependencies with: python -m pip install -e ".[dev]"', file=sys.stderr)
         return 1
     return run("-m", "unittest", "discover", "-s", "tests", "-t", ".", "-v")

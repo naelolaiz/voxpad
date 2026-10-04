@@ -1,7 +1,7 @@
 """VoxPad desktop application: choose an export, transcribe it locally, read the result.
 
-Run with `voxpad-app` or `python -m voxpad.gui`. Needs Tkinter, which ships
-with most Python installations.
+Run with `voxpad-app`, `python -m voxpad.gui` or `python voxpad/gui.py`. The
+window is built with Qt (PySide6), installed with the other dependencies.
 """
 
 import argparse
@@ -11,7 +11,11 @@ import sys
 import threading
 import zipfile
 
-from . import whatsapp
+try:
+    from . import whatsapp
+except ImportError:  # Started as a file: python voxpad/gui.py
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import whatsapp
 
 
 MODELS = (
@@ -107,193 +111,197 @@ def summary_text(summary: dict) -> str:
     return f"{text}. Saved in {summary['output'].parent}"
 
 
-class App:
-    """The window. Tkinter is imported here so the rest of the module works without it."""
+def create_window(source: Path | None = None):
+    """Build the window. Qt is imported here so the rest of the module works without it."""
+    from PySide6 import QtCore, QtGui, QtWidgets
 
-    def __init__(self, root, source: Path | None = None):
-        import tkinter as tk
-        from tkinter import filedialog, messagebox, ttk
-        self.tk, self.filedialog, self.messagebox = tk, filedialog, messagebox
-        self.root = root
-        self.events: queue.Queue = queue.Queue()
-        self.job: Job | None = None
-        self.source: Path | None = None
-        self.folder: Path | None = None
+    class Window(QtWidgets.QWidget):
+        def __init__(self):
+            super().__init__()
+            self.events: queue.Queue = queue.Queue()
+            self.job: Job | None = None
+            self.source: Path | None = None
+            self.folder: Path | None = None
+            self.setWindowTitle("VoxPad")
+            self.resize(820, 620)
+            self.setAcceptDrops(True)
 
-        root.title("VoxPad")
-        root.minsize(720, 560)
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
-        frame = ttk.Frame(root, padding=16)
-        frame.grid(sticky="nsew")
-        frame.columnconfigure(1, weight=1)
-        frame.rowconfigure(8, weight=1)
+            title = QtWidgets.QLabel("Turn WhatsApp voice messages into text")
+            font = title.font()
+            font.setPointSize(font.pointSize() + 5)
+            font.setBold(True)
+            title.setFont(font)
+            subtitle = QtWidgets.QLabel(
+                "Everything runs on this computer. Export the chat with media included, then choose it or drop it here.")
+            subtitle.setWordWrap(True)
 
-        ttk.Label(frame, text="Turn WhatsApp voice messages into text", font=("TkDefaultFont", 14, "bold")).grid(
-            row=0, column=0, columnspan=4, sticky="w")
-        ttk.Label(frame, text="Everything runs on this computer. Export the chat with media included.").grid(
-            row=1, column=0, columnspan=4, sticky="w", pady=(2, 14))
+            self.source_box = QtWidgets.QLineEdit(readOnly=True, placeholderText="No export chosen")
+            self.file_button = QtWidgets.QPushButton("Choose ZIP or file…", clicked=self.choose_file)
+            self.folder_button = QtWidgets.QPushButton("Choose folder…", clicked=self.choose_folder)
+            self.folder_box = QtWidgets.QLineEdit(readOnly=True)
+            self.output_button = QtWidgets.QPushButton("Change…", clicked=self.choose_output)
+            self.language = QtWidgets.QComboBox(editable=True)
+            self.language.addItems([AUTOMATIC, *(name for _, name in LANGUAGES)])
+            self.model = QtWidgets.QComboBox(editable=True)
+            self.model.addItems([f"{name} — {description}" for name, description in MODELS])
 
-        ttk.Label(frame, text="Export").grid(row=2, column=0, sticky="w", padx=(0, 10))
-        self.source_text = tk.StringVar(value="No export chosen")
-        ttk.Label(frame, textvariable=self.source_text, relief="sunken", padding=4).grid(row=2, column=1, sticky="ew")
-        self.file_button = ttk.Button(frame, text="Choose ZIP or file…", command=self.choose_file)
-        self.file_button.grid(row=2, column=2, padx=(8, 0))
-        self.folder_button = ttk.Button(frame, text="Choose folder…", command=self.choose_folder)
-        self.folder_button.grid(row=2, column=3, padx=(8, 0))
+            form = QtWidgets.QGridLayout()
+            form.setColumnStretch(1, 1)
+            for row, (label, widget, buttons) in enumerate((
+                ("Export", self.source_box, (self.file_button, self.folder_button)),
+                ("Save in", self.folder_box, (self.output_button,)),
+                ("Language", self.language, ()),
+                ("Model", self.model, ()),
+            )):
+                form.addWidget(QtWidgets.QLabel(label), row, 0)
+                form.addWidget(widget, row, 1)
+                for column, button in enumerate(buttons, 2):
+                    form.addWidget(button, row, column)
 
-        ttk.Label(frame, text="Save in").grid(row=3, column=0, sticky="w", padx=(0, 10), pady=(8, 0))
-        self.folder_text = tk.StringVar(value="")
-        ttk.Label(frame, textvariable=self.folder_text, relief="sunken", padding=4).grid(row=3, column=1, sticky="ew", pady=(8, 0))
-        self.output_button = ttk.Button(frame, text="Change…", command=self.choose_output)
-        self.output_button.grid(row=3, column=2, padx=(8, 0), pady=(8, 0), sticky="ew")
+            self.start_button = QtWidgets.QPushButton("Transcribe", clicked=self.start, enabled=False, default=True)
+            self.stop_button = QtWidgets.QPushButton("Stop", clicked=self.stop, enabled=False)
+            self.open_button = QtWidgets.QPushButton("Open folder", clicked=self.open_folder, enabled=False)
+            actions = QtWidgets.QHBoxLayout()
+            for button in (self.start_button, self.stop_button, self.open_button):
+                actions.addWidget(button)
+            actions.addStretch(1)
 
-        ttk.Label(frame, text="Language").grid(row=4, column=0, sticky="w", padx=(0, 10), pady=(8, 0))
-        self.language = ttk.Combobox(frame, values=[AUTOMATIC, *(name for _, name in LANGUAGES)])
-        self.language.set(AUTOMATIC)
-        self.language.grid(row=4, column=1, columnspan=2, sticky="ew", pady=(8, 0))
+            self.progress = QtWidgets.QProgressBar(minimum=0, maximum=1, value=0, textVisible=False)
+            self.text = QtWidgets.QPlainTextEdit(readOnly=True)
+            self.text.setFont(QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.SystemFont.FixedFont))
+            self.status = QtWidgets.QLabel("Choose an export to begin.")
+            self.status.setWordWrap(True)
 
-        ttk.Label(frame, text="Model").grid(row=5, column=0, sticky="w", padx=(0, 10), pady=(8, 0))
-        self.model = ttk.Combobox(frame, values=[f"{name} — {description}" for name, description in MODELS])
-        self.model.current(0)
-        self.model.grid(row=5, column=1, columnspan=2, sticky="ew", pady=(8, 0))
+            layout = QtWidgets.QVBoxLayout(self)
+            layout.setContentsMargins(18, 16, 18, 14)
+            layout.addWidget(title)
+            layout.addWidget(subtitle)
+            layout.addSpacing(8)
+            layout.addLayout(form)
+            layout.addSpacing(6)
+            layout.addLayout(actions)
+            layout.addWidget(self.progress)
+            layout.addWidget(self.text, 1)
+            layout.addWidget(self.status)
 
-        buttons = ttk.Frame(frame)
-        buttons.grid(row=6, column=0, columnspan=4, sticky="w", pady=(14, 6))
-        self.start_button = ttk.Button(buttons, text="Transcribe", command=self.start, state="disabled")
-        self.start_button.pack(side="left")
-        self.stop_button = ttk.Button(buttons, text="Stop", command=self.stop, state="disabled")
-        self.stop_button.pack(side="left", padx=(8, 0))
-        self.open_button = ttk.Button(buttons, text="Open folder", command=self.open_folder, state="disabled")
-        self.open_button.pack(side="left", padx=(8, 0))
+            self.timer = QtCore.QTimer(self, interval=100, timeout=self.poll)
+            self.timer.start()
+            if source:
+                self.set_source(source)
 
-        self.progress = ttk.Progressbar(frame, mode="determinate")
-        self.progress.grid(row=7, column=0, columnspan=4, sticky="ew")
-        text_frame = ttk.Frame(frame)
-        text_frame.grid(row=8, column=0, columnspan=4, sticky="nsew", pady=(8, 0))
-        text_frame.columnconfigure(0, weight=1)
-        text_frame.rowconfigure(0, weight=1)
-        self.text = tk.Text(text_frame, wrap="word", state="disabled", height=14)
-        self.text.grid(row=0, column=0, sticky="nsew")
-        scrollbar = ttk.Scrollbar(text_frame, command=self.text.yview)
-        scrollbar.grid(row=0, column=1, sticky="ns")
-        self.text.configure(yscrollcommand=scrollbar.set)
-        self.status = tk.StringVar(value="Choose an export to begin.")
-        ttk.Label(frame, textvariable=self.status).grid(row=9, column=0, columnspan=4, sticky="w", pady=(8, 0))
+        def set_source(self, source: Path) -> None:
+            self.source = source.expanduser().resolve()
+            self.source_box.setText(str(self.source))
+            self.set_folder(default_output_folder(self.source))
+            self.start_button.setEnabled(self.job is None)
+            self.status.setText("Ready.")
 
-        root.protocol("WM_DELETE_WINDOW", self.close)
-        if source:
-            self.set_source(source)
-        self.poll()
+        def set_folder(self, folder: Path) -> None:
+            self.folder = folder
+            self.folder_box.setText(str(folder))
 
-    def set_source(self, source: Path) -> None:
-        self.source = source.expanduser().resolve()
-        self.source_text.set(str(self.source))
-        self.set_folder(default_output_folder(self.source))
-        self.start_button.configure(state="normal")
-        self.status.set("Ready.")
+        def choose_file(self) -> None:
+            patterns = " ".join(f"*{extension}" for extension in sorted(whatsapp.AUDIO_EXTENSIONS | {".zip", ".txt"}))
+            path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self, "Choose a WhatsApp export", "", f"WhatsApp export, chat or audio ({patterns});;All files (*)")
+            if path:
+                self.set_source(Path(path))
 
-    def set_folder(self, folder: Path) -> None:
-        self.folder = folder
-        self.folder_text.set(str(folder))
+        def choose_folder(self) -> None:
+            path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose an extracted export folder")
+            if path:
+                self.set_source(Path(path))
 
-    def choose_file(self) -> None:
-        patterns = " ".join(f"*{extension}" for extension in sorted(whatsapp.AUDIO_EXTENSIONS | {".zip", ".txt"}))
-        path = self.filedialog.askopenfilename(
-            title="Choose a WhatsApp export", filetypes=[("WhatsApp export, chat or audio", patterns), ("All files", "*")])
-        if path:
-            self.set_source(Path(path))
+        def choose_output(self) -> None:
+            path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose where to save the transcripts")
+            if path:
+                self.set_folder(Path(path))
 
-    def choose_folder(self) -> None:
-        path = self.filedialog.askdirectory(title="Choose an extracted export folder")
-        if path:
-            self.set_source(Path(path))
+        def dragEnterEvent(self, event) -> None:
+            if self.job is None and any(url.isLocalFile() for url in event.mimeData().urls()):
+                event.acceptProposedAction()
 
-    def choose_output(self) -> None:
-        path = self.filedialog.askdirectory(title="Choose where to save the transcripts")
-        if path:
-            self.set_folder(Path(path))
+        def dropEvent(self, event) -> None:
+            for url in event.mimeData().urls():
+                if url.isLocalFile():
+                    self.set_source(Path(url.toLocalFile()))
+                    event.acceptProposedAction()
+                    return
 
-    def show(self, content: str, *, append: bool = False) -> None:
-        self.text.configure(state="normal")
-        if not append:
-            self.text.delete("1.0", "end")
-        # The text box draws carriage returns as boxes; the saved files keep them.
-        self.text.insert("end", content.replace("\r\n", "\n").replace("\r", "\n"))
-        self.text.see("end" if append else "1.0")
-        self.text.configure(state="disabled")
+        def set_running(self, running: bool) -> None:
+            for widget in (self.file_button, self.folder_button, self.output_button, self.language, self.model):
+                widget.setEnabled(not running)
+            self.start_button.setEnabled(not running and self.source is not None)
+            self.stop_button.setEnabled(running)
 
-    def set_running(self, running: bool) -> None:
-        idle = "disabled" if running else "normal"
-        for widget in (self.file_button, self.folder_button, self.output_button, self.language, self.model, self.start_button):
-            widget.configure(state=idle)
-        self.stop_button.configure(state="normal" if running else "disabled")
+        def start(self) -> None:
+            if self.job or not self.source or not self.folder:
+                return
+            try:
+                language = language_code(self.language.currentText())
+            except ValueError as error:
+                QtWidgets.QMessageBox.critical(self, "VoxPad", str(error))
+                return
+            if not self.source.exists():
+                QtWidgets.QMessageBox.critical(self, "VoxPad", f"The export no longer exists: {self.source}")
+                return
+            self.text.clear()
+            self.progress.setRange(0, 1)
+            self.progress.setValue(0)
+            self.open_button.setEnabled(False)
+            self.status.setText("Starting…")
+            self.job = Job(self.source, self.folder, model=model_name(self.model.currentText()),
+                           language=language, events=self.events)
+            self.set_running(True)
+            self.job.start()
 
-    def start(self) -> None:
-        if self.job or not self.source or not self.folder:
-            return
-        try:
-            language = language_code(self.language.get())
-        except ValueError as error:
-            self.messagebox.showerror("VoxPad", str(error))
-            return
-        if not self.source.exists():
-            self.messagebox.showerror("VoxPad", f"The export no longer exists: {self.source}")
-            return
-        self.show("")
-        self.progress.configure(value=0, maximum=1)
-        self.open_button.configure(state="disabled")
-        self.set_running(True)
-        self.status.set("Starting…")
-        self.job = Job(self.source, self.folder, model=model_name(self.model.get()), language=language, events=self.events)
-        self.job.start()
+        def stop(self) -> None:
+            if self.job:
+                self.job.stop()
+                self.stop_button.setEnabled(False)
+                self.status.setText("Stopping after the current voice message…")
 
-    def stop(self) -> None:
-        if self.job:
-            self.job.stop()
-            self.stop_button.configure(state="disabled")
-            self.status.set("Stopping after the current voice message…")
+        def open_folder(self) -> None:
+            if self.folder:
+                QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(self.folder)))
 
-    def open_folder(self) -> None:
-        import os
-        import subprocess
-        if not self.folder:
-            return
-        if sys.platform == "win32":
-            os.startfile(self.folder)
-        else:
-            subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", str(self.folder)])
+        def handle(self, event: tuple) -> None:
+            kind = event[0]
+            if kind == "status":
+                self.status.setText(event[1].strip())
+                self.text.appendPlainText(event[1])
+            elif kind == "progress":
+                self.progress.setRange(0, max(event[2], 1))
+                self.progress.setValue(event[1])
+            elif kind == "done":
+                self.text.setPlainText(event[2])
+                self.status.setText(summary_text(event[1]))
+                self.open_button.setEnabled(True)
+            elif kind == "failed":
+                self.status.setText("Could not transcribe this export.")
+            if kind in ("done", "failed"):
+                self.job = None
+                self.set_running(False)
+            if kind == "failed":
+                QtWidgets.QMessageBox.critical(self, "VoxPad", event[1])
 
-    def handle(self, event: tuple) -> None:
-        kind = event[0]
-        if kind == "status":
-            self.status.set(event[1].strip())
-            self.show(event[1] + "\n", append=True)
-        elif kind == "progress":
-            self.progress.configure(value=event[1], maximum=max(event[2], 1))
-        elif kind == "done":
-            self.show(event[2])
-            self.status.set(summary_text(event[1]))
-            self.open_button.configure(state="normal")
-        elif kind == "failed":
-            self.status.set("Could not transcribe this export.")
-            self.messagebox.showerror("VoxPad", event[1])
-        if kind in ("done", "failed"):
-            self.job = None
-            self.set_running(False)
+        def poll(self) -> None:
+            try:
+                while True:
+                    self.handle(self.events.get_nowait())
+            except queue.Empty:
+                pass
 
-    def poll(self) -> None:
-        try:
-            while True:
-                self.handle(self.events.get_nowait())
-        except queue.Empty:
-            pass
-        self.root.after(100, self.poll)
+        def closeEvent(self, event) -> None:
+            buttons = QtWidgets.QMessageBox.StandardButton
+            if self.job and QtWidgets.QMessageBox.question(
+                    self, "VoxPad", "A transcription is running. Close anyway?") != buttons.Yes:
+                event.ignore()
+                return
+            self.timer.stop()
+            event.accept()
 
-    def close(self) -> None:
-        if self.job and not self.messagebox.askokcancel("VoxPad", "A transcription is running. Close anyway?"):
-            return
-        self.root.destroy()
+    return Window()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -301,19 +309,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("source", nargs="?", type=Path, help="Export ZIP, folder, chat .txt or audio file to open")
     args = parser.parse_args(argv)
     try:
-        import tkinter as tk
-    except ImportError:
-        print("VoxPad's window needs Tkinter. Install it (for example the python3-tk package on Linux) "
-              "or use the voxpad command instead.", file=sys.stderr)
+        from PySide6 import QtWidgets
+    except ImportError as error:
+        print(f"VoxPad's window needs PySide6, which could not be loaded: {error}\n"
+              "Install the dependencies with: python -m pip install -r requirements.txt", file=sys.stderr)
         return 1
-    try:
-        root = tk.Tk()
-    except tk.TclError as error:
-        print(f"Could not open a window: {error}", file=sys.stderr)
-        return 1
-    App(root, args.source)
-    root.mainloop()
-    return 0
+    application = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv[:1])
+    application.setApplicationName("VoxPad")
+    window = create_window(args.source)
+    window.show()
+    return application.exec()
 
 
 if __name__ == "__main__":

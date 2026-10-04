@@ -25,3 +25,7 @@ include = ["voxpad*"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
+
+# Dependencies are read from requirements.txt, so uv must notice when it changes.
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { file = "requirements.txt" }]
