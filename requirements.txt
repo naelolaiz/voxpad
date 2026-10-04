@@ -1,3 +1,4 @@
 faster-whisper==1.2.1
+huggingface-hub==1.33.0
 codecpod==0.3.1
 PySide6-Essentials==6.11.2

@@ -1,5 +1,6 @@
-"""VoxPad desktop application: choose an export, transcribe it locally, read the result.
+"""VoxPad desktop application: choose an export, transcribe it, read the result.
 
+Whisper runs on this computer unless a hosted service is chosen in the window.
 Run with `voxpad-app`, `python -m voxpad.gui` or `python voxpad/gui.py`. The
 window is built with Qt (PySide6), installed with the other dependencies.
 """
@@ -35,6 +36,10 @@ LANGUAGES = (
 )
 REPORT_NAME = "transcripts.json"
 CHAT_NAME = "chat_with_transcripts.txt"
+LOCAL = "This computer"
+# Where Whisper runs. Every choice that sends the audio elsewhere says so.
+PLACES = ((LOCAL, None), *((f"{name} (uploads the audio)", service) for service, name in whatsapp.REMOTE_SERVICES.items()))
+EXPORT_HINT = "Export the chat with media included, then choose it or drop it here."
 
 
 def default_output_folder(source: Path) -> Path:
@@ -64,6 +69,36 @@ def model_name(choice: str) -> str:
     return choice.strip() or whatsapp.DEFAULT_MODEL
 
 
+def remote_service(choice: str) -> str | None:
+    """Turn the "Run on" box's text into a hosted service, or None for this computer."""
+    return dict(PLACES).get(choice)
+
+
+def privacy_note(remote: str | None) -> str:
+    """What the window says about where the voice messages go."""
+    if not remote:
+        return f"Everything runs on this computer. {EXPORT_HINT}"
+    return (f"Voice messages are uploaded to {whatsapp.REMOTE_SERVICES[remote]} to be transcribed; "
+            f"the chat text stays on this computer. {EXPORT_HINT}")
+
+
+def remote_problem(remote: str | None, *, language: str | None, model: str, token: str | None) -> str | None:
+    """Say, in the window's words, why the chosen hosted service cannot start.
+
+    Only what the window holds is checked here. Whether a token is saved, and whether
+    the service offers the model, is found out by the job, away from the window's thread.
+    """
+    if not remote:
+        return None
+    if language and remote not in whatsapp.REMOTE_LANGUAGE_SERVICES:
+        return (f"{whatsapp.REMOTE_SERVICES[remote]} cannot be told the language. "
+                f"Choose “{AUTOMATIC}”, or run on another service.")
+    if whatsapp.remote_model_problem(model):
+        return ("A hosted service needs a Whisper size or a Hugging Face repository name such as "
+                "openai/whisper-large-v3-turbo as the model, not a folder or a web address.")
+    return whatsapp.token_problem(token) if token else None
+
+
 class Job(threading.Thread):
     """Transcribe one export in the background and report through a queue.
 
@@ -71,12 +106,15 @@ class Job(threading.Thread):
     ("done", summary, preview) and ("failed", message).
     """
 
-    def __init__(self, source: Path, folder: Path, *, model: str, language: str | None, events: queue.Queue):
+    def __init__(self, source: Path, folder: Path, *, model: str, language: str | None, events: queue.Queue,
+                 remote: str | None = None, token: str | None = None):
         super().__init__(daemon=True)
         self.source = source
         self.folder = folder
         self.model = model
         self.language = language
+        self.remote = remote
+        self.token = token
         self.events = events
         self._stop_requested = threading.Event()
 
@@ -87,7 +125,8 @@ class Job(threading.Thread):
         try:
             summary = whatsapp.transcribe_export(
                 self.source, self.folder.resolve() / REPORT_NAME, self.folder.resolve() / CHAT_NAME,
-                model=self.model, language=self.language, chat_output_optional=True,
+                model=self.model, language=self.language, remote=self.remote, remote_token=self.token,
+                chat_output_optional=True,
                 notify=lambda text: self.events.put(("status", text)),
                 progress=lambda done, total: self.events.put(("progress", done, total)),
                 should_stop=self._stop_requested.is_set,
@@ -95,6 +134,8 @@ class Job(threading.Thread):
             # Show the conversation when there is one, otherwise the plain report.
             shown = summary["chat_output"] or summary["output"].with_suffix(".txt")
             self.events.put(("done", summary, shown.read_bytes().decode("utf-8")))
+        except whatsapp.RemoteTokenNeeded as error:
+            self.events.put(("failed", f"{error} You can also paste one in the Token box."))
         except (OSError, ValueError, RuntimeError, zipfile.BadZipFile, zipfile.LargeZipFile) as error:
             self.events.put(("failed", str(error)))
         except Exception as error:  # Keep the window usable and say what happened.
@@ -131,9 +172,8 @@ def create_window(source: Path | None = None):
             font.setPointSize(font.pointSize() + 5)
             font.setBold(True)
             title.setFont(font)
-            subtitle = QtWidgets.QLabel(
-                "Everything runs on this computer. Export the chat with media included, then choose it or drop it here.")
-            subtitle.setWordWrap(True)
+            self.subtitle = QtWidgets.QLabel(privacy_note(None))
+            self.subtitle.setWordWrap(True)
 
             self.source_box = QtWidgets.QLineEdit(readOnly=True, placeholderText="No export chosen")
             self.file_button = QtWidgets.QPushButton("Choose ZIP or file…", clicked=self.choose_file)
@@ -144,6 +184,15 @@ def create_window(source: Path | None = None):
             self.language.addItems([AUTOMATIC, *(name for _, name in LANGUAGES)])
             self.model = QtWidgets.QComboBox(editable=True)
             self.model.addItems([f"{name} — {description}" for name, description in MODELS])
+            # A pasted token is used for this session only; it is never saved.
+            self.token = QtWidgets.QLineEdit(
+                echoMode=QtWidgets.QLineEdit.EchoMode.Password, enabled=False,
+                placeholderText="Hugging Face access token; leave empty to use HF_TOKEN or a saved login")
+            # An export dropped here must reach the window, not be taken for a token.
+            self.token.setAcceptDrops(False)
+            self.place = QtWidgets.QComboBox()
+            self.place.addItems([label for label, _ in PLACES])
+            self.place.currentTextChanged.connect(self.place_changed)
 
             form = QtWidgets.QGridLayout()
             form.setColumnStretch(1, 1)
@@ -152,6 +201,8 @@ def create_window(source: Path | None = None):
                 ("Save in", self.folder_box, (self.output_button,)),
                 ("Language", self.language, ()),
                 ("Model", self.model, ()),
+                ("Run on", self.place, ()),
+                ("Token", self.token, ()),
             )):
                 form.addWidget(QtWidgets.QLabel(label), row, 0)
                 form.addWidget(widget, row, 1)
@@ -175,7 +226,7 @@ def create_window(source: Path | None = None):
             layout = QtWidgets.QVBoxLayout(self)
             layout.setContentsMargins(18, 16, 18, 14)
             layout.addWidget(title)
-            layout.addWidget(subtitle)
+            layout.addWidget(self.subtitle)
             layout.addSpacing(8)
             layout.addLayout(form)
             layout.addSpacing(6)
@@ -228,9 +279,15 @@ def create_window(source: Path | None = None):
                     event.acceptProposedAction()
                     return
 
+        def place_changed(self, choice: str) -> None:
+            remote = remote_service(choice)
+            self.subtitle.setText(privacy_note(remote))
+            self.token.setEnabled(remote is not None)
+
         def set_running(self, running: bool) -> None:
-            for widget in (self.file_button, self.folder_button, self.output_button, self.language, self.model):
+            for widget in (self.file_button, self.folder_button, self.output_button, self.language, self.model, self.place):
                 widget.setEnabled(not running)
+            self.token.setEnabled(not running and remote_service(self.place.currentText()) is not None)
             self.start_button.setEnabled(not running and self.source is not None)
             self.stop_button.setEnabled(running)
 
@@ -242,6 +299,13 @@ def create_window(source: Path | None = None):
             except ValueError as error:
                 QtWidgets.QMessageBox.critical(self, "VoxPad", str(error))
                 return
+            model = model_name(self.model.currentText())
+            remote = remote_service(self.place.currentText())
+            token = self.token.text().strip() or None
+            problem = remote_problem(remote, language=language, model=model, token=token)
+            if problem:
+                QtWidgets.QMessageBox.critical(self, "VoxPad", problem)
+                return
             if not self.source.exists():
                 QtWidgets.QMessageBox.critical(self, "VoxPad", f"The export no longer exists: {self.source}")
                 return
@@ -250,8 +314,8 @@ def create_window(source: Path | None = None):
             self.progress.setValue(0)
             self.open_button.setEnabled(False)
             self.status.setText("Starting…")
-            self.job = Job(self.source, self.folder, model=model_name(self.model.currentText()),
-                           language=language, events=self.events)
+            self.job = Job(self.source, self.folder, model=model, language=language, events=self.events,
+                           remote=remote, token=token)
             self.set_running(True)
             self.job.start()
 
@@ -284,6 +348,9 @@ def create_window(source: Path | None = None):
                 self.set_running(False)
             if kind == "failed":
                 QtWidgets.QMessageBox.critical(self, "VoxPad", event[1])
+            elif kind == "done" and event[1].get("refusal"):
+                # A hosted service ended the run: say why instead of leaving it in the transcript.
+                QtWidgets.QMessageBox.warning(self, "VoxPad", event[1]["refusal"])
 
         def poll(self) -> None:
             try:
@@ -305,7 +372,7 @@ def create_window(source: Path | None = None):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="voxpad-app", description="VoxPad desktop application: transcribe WhatsApp voice messages locally.")
+    parser = argparse.ArgumentParser(prog="voxpad-app", description="VoxPad desktop application: transcribe WhatsApp voice messages.")
     parser.add_argument("source", nargs="?", type=Path, help="Export ZIP, folder, chat .txt or audio file to open")
     args = parser.parse_args(argv)
     try:

@@ -59,6 +59,58 @@ class FakeWhisper:
         }
 
 
+class FakeService:
+    """Stand in for the hosted service: capture what would be uploaded, then answer or fail as told."""
+
+    def __init__(self, *, token="hf_secret", outcomes=(), offers=("deepinfra", "hf-inference"), lookup_error=None):
+        self.token = token
+        self.outcomes = list(outcomes)
+        # The services that offer every model asked about, and what asking fails with.
+        self.offers = offers
+        self.lookup_error = lookup_error
+        self.lookups = []
+        self.clients = []
+        self.calls = []
+        self.closed = 0
+
+    def module(self):
+        """A replacement for the huggingface_hub module."""
+        service = self
+
+        class Api:
+            def model_info(self, repository, **options):
+                service.lookups.append({"repository": repository, **options})
+                if service.lookup_error:
+                    raise service.lookup_error
+                return types.SimpleNamespace(inference_provider_mapping=[
+                    types.SimpleNamespace(provider=name, task="automatic-speech-recognition") for name in service.offers
+                ] or None)
+
+        class Client:
+            def __init__(self, **options):
+                service.clients.append(options)
+
+            def automatic_speech_recognition(self, audio, **options):
+                service.calls.append({"audio": audio, **options})
+                outcome = service.outcomes.pop(0)
+                if isinstance(outcome, Exception):
+                    raise outcome
+                return types.SimpleNamespace(text=outcome)
+
+            def close(self):
+                service.closed += 1
+
+        return types.SimpleNamespace(HfApi=Api, InferenceClient=Client, get_token=lambda: service.token)
+
+
+def http_error(status, message=None):
+    """An error shaped like the ones the model hub raises for an HTTP status."""
+    error = OSError(f"{status} Error for url: https://router.example/v1")
+    error.response = types.SimpleNamespace(status_code=status)
+    error.server_message = message
+    return error
+
+
 class ExportTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -276,7 +328,7 @@ class ExportTests(unittest.TestCase):
         original_import = builtins.__import__
 
         def guarded_import(name, *args, **kwargs):
-            if name.split(".")[0] in {"faster_whisper", "ctranslate2", "codecpod", "numpy"}:
+            if name.split(".")[0] in {"faster_whisper", "ctranslate2", "codecpod", "numpy", "huggingface_hub"}:
                 raise AssertionError(f"Dry run must not import {name}")
             return original_import(name, *args, **kwargs)
 
@@ -374,6 +426,36 @@ class ExportTests(unittest.TestCase):
                 with self.assertRaises(SystemExit) as error:
                     app.main([str(audio), "--dry-run", f"--chunk-seconds={size}"])
                 self.assertEqual(error.exception.code, 2)
+
+    def test_remote_options_the_service_cannot_honor_are_rejected_before_any_work(self):
+        audio = self.touch("voice.opus")
+        folder = self.root / "converted-model"
+        folder.mkdir()
+        cases = (
+            ["--remote", "deepinfra", "--keyword", "José"],
+            ["--remote", "deepinfra", "--word-timestamps"],
+            ["--remote", "hf-inference", "--language", "es"],
+            ["--remote", "deepinfra", "--model", str(folder)],
+            # A URL or a path would be used as the address to upload to.
+            ["--remote", "hf-inference", "--model", "http://127.0.0.1:8000/elsewhere"],
+            ["--remote", "deepinfra", "--model", "https://example.org/whisper"],
+            ["--remote", "deepinfra", "--model", "some/deep/path"],
+            ["--remote", "elsewhere"],
+        )
+        constructor = mock.Mock(side_effect=AssertionError("Nothing may be uploaded"))
+        with mock.patch.object(app, "RemoteWhisper", constructor):
+            for arguments in cases:
+                with self.subTest(arguments=arguments), redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as error:
+                        app.main([str(audio), *arguments])
+                    self.assertEqual(error.exception.code, 2)
+            # Callers of the function get the same answer as the command line.
+            with self.assertRaisesRegex(ValueError, "--keyword is not available"):
+                app.transcribe_export(audio, self.root / "transcripts.json", remote="deepinfra", keywords=["José"])
+            # A dry run lists the recordings without a token or a connection.
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(app.main([str(audio), "--remote", "deepinfra", "--language", "es", "--dry-run"]), 0)
+        constructor.assert_not_called()
 
 
 @unittest.skipUnless(codecpod is not None and np is not None, "Install codecpod and NumPy for audio conversion tests")
@@ -535,6 +617,195 @@ class AudioTests(unittest.TestCase):
         self.assertLess(np.sqrt(np.mean((samples - source) ** 2)), 0.03)
         self.assertAlmostEqual(result["duration_seconds"], 2.0)
         self.assertEqual(result["text"], "part 1")
+
+
+@unittest.skipUnless(codecpod is not None and np is not None, "Install codecpod and NumPy for audio conversion tests")
+class RemoteTests(unittest.TestCase):
+    """The hosted service is replaced by a fake: these tests never connect anywhere."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+
+    def engine(self, service, *arguments):
+        with mock.patch.dict(sys.modules, {"huggingface_hub": service.module()}):
+            return app.RemoteWhisper(*arguments)
+
+    def test_adapter_uploads_wav_names_the_repository_and_forces_the_language(self):
+        service = FakeService(outcomes=["  Hola, ¿qué tal?  ", None])
+        routed = self.engine(service, "large-v3-turbo", "deepinfra")
+        own = self.engine(service, "openai/whisper-large-v3", "hf-inference")
+        samples = np.array([0.0, 0.5, 1.5, -1.5], dtype=np.float32)
+        self.assertEqual(routed.transcribe(samples, language="es"), {"text": "Hola, ¿qué tal?", "language": "es"})
+        # Without a forced language the service does not report one.
+        self.assertEqual(own.transcribe(samples), {"text": "", "language": ""})
+        self.assertEqual(service.clients, [
+            {"provider": "deepinfra", "token": "hf_secret", "timeout": 120, "headers": None},
+            {"provider": "hf-inference", "token": "hf_secret", "timeout": 120, "headers": {"Content-Type": "audio/wav"}},
+        ])
+        # Each engine first asks, with the same token, whether its service offers the model.
+        self.assertEqual(service.lookups, [
+            {"repository": repository, "expand": ["inferenceProviderMapping"], "token": "hf_secret", "timeout": 120}
+            for repository in ("openai/whisper-large-v3-turbo", "openai/whisper-large-v3")
+        ])
+        # The client is released after every request, so uploaded chunks do not pile up in memory.
+        self.assertEqual(service.closed, 2)
+        first, second = service.calls
+        self.assertEqual((first["model"], first["extra_body"]), ("openai/whisper-large-v3-turbo", {"language": "es"}))
+        self.assertEqual((second["model"], second["extra_body"]), ("openai/whisper-large-v3", None))
+        with wave.open(io.BytesIO(first["audio"])) as recording:
+            self.assertEqual(
+                (recording.getnchannels(), recording.getsampwidth(), recording.getframerate()), (1, 2, app.SAMPLE_RATE))
+            frames = recording.readframes(recording.getnframes())
+        # Samples beyond full scale are clipped instead of wrapping around.
+        self.assertEqual(struct.unpack("<4h", frames), (0, 16384, 32767, -32767))
+
+    def test_adapter_does_not_start_without_a_usable_token(self):
+        service = FakeService(token=None)
+        with self.assertRaisesRegex(app.RemoteTokenNeeded, "HF_TOKEN"):
+            self.engine(service)
+        # Anything not shaped like Hugging Face's tokens would be sent to DeepInfra directly, and a
+        # line break would get the token quoted in an error: such a token is neither used nor repeated.
+        for token in ('"hf_quoted"', "HF_TOKEN=hf_pasted", "Bearer hf_pasted", "hf_two\nlines", "hf_with space", "sk-other"):
+            with self.subTest(token=token):
+                with self.assertRaises(RuntimeError) as caught:
+                    self.engine(service, "large-v3-turbo", "deepinfra", token)
+                self.assertIn("starts with hf_", str(caught.exception))
+                self.assertNotIn(token, str(caught.exception))
+        self.assertIsNotNone(app.token_problem("hf_"))
+        # A token from HF_TOKEN or a saved login is held to the same shape.
+        saved = FakeService(token='"hf_quoted"')
+        with self.assertRaisesRegex(RuntimeError, "starts with hf_"):
+            self.engine(saved)
+        for attempted in (service, saved):
+            self.assertEqual((attempted.lookups, attempted.clients), ([], []))
+        # Tokens of a browser login carry dots and dashes.
+        self.assertEqual(self.engine(FakeService(token=None), "large-v3-turbo", "deepinfra", "hf_oauth_a.b-c").model,
+                         "openai/whisper-large-v3-turbo")
+
+    def test_adapter_asks_who_offers_the_model_before_anything_is_uploaded(self):
+        service = FakeService(offers=("hf-inference",))
+        with self.assertRaisesRegex(RuntimeError, "DeepInfra through Hugging Face does not offer openai/whisper-small"):
+            self.engine(service, "small", "deepinfra")
+        self.assertEqual(self.engine(service, "small", "hf-inference").model, "openai/whisper-small")
+        with self.assertRaisesRegex(RuntimeError, "Hugging Face does not offer openai/whisper-small"):
+            self.engine(FakeService(offers=()), "small", "hf-inference")
+
+        # The Hub answers alike for a missing repository and a token it does not accept.
+        class RepositoryNotFoundError(Exception):
+            pass
+
+        with self.assertRaisesRegex(RuntimeError, "openai/whisper-trubo: there is no such repository, or the access token"):
+            self.engine(FakeService(lookup_error=RepositoryNotFoundError("401 Invalid username or password.")), "trubo")
+        # The local runtime's short names select the repositories of the sizes they stand for.
+        self.assertEqual([self.engine(FakeService(), name).model for name in ("turbo", "large")],
+                         ["openai/whisper-large-v3-turbo", "openai/whisper-large-v3"])
+        offline = FakeService(lookup_error=OSError("Connection refused\nwhile sending Bearer hf_secret"))
+        with self.assertRaises(RuntimeError) as caught:
+            self.engine(offline)
+        self.assertEqual(str(caught.exception), "Could not ask Hugging Face who offers openai/whisper-large-v3-turbo: "
+                                                "Connection refused while sending Bearer <token>")
+        self.assertEqual(offline.clients, [])
+        # A URL or a path is never asked about, let alone contacted.
+        unasked = FakeService()
+        for model in ("http://127.0.0.1:8000/elsewhere", "https://example.org/whisper", "some/deep/path", "C:\\models\\whisper"):
+            with self.subTest(model=model):
+                with self.assertRaisesRegex(RuntimeError, "Whisper size or a Hugging Face repository"):
+                    self.engine(unasked, model, "hf-inference")
+        self.assertEqual((unasked.lookups, unasked.clients), ([], []))
+
+    def test_a_model_the_service_lacks_ends_the_run_before_an_earlier_report_is_replaced(self):
+        audio = self.root / "voice.wav"
+        write_wav(audio)
+        output = self.root / "reports/transcripts.json"
+        output.parent.mkdir()
+        output.write_text("an earlier report", encoding="utf-8")
+        service = FakeService(offers=())
+        stderr = io.StringIO()
+        with mock.patch.dict(sys.modules, {"huggingface_hub": service.module()}), redirect_stderr(stderr):
+            code = app.main([str(audio), "-o", str(output), "--model", "small", "--remote", "deepinfra"])
+        self.assertEqual(code, 1)
+        self.assertIn("does not offer openai/whisper-small", stderr.getvalue())
+        self.assertEqual(output.read_text(encoding="utf-8"), "an earlier report")
+        self.assertEqual([path.name for path in output.parent.iterdir()], ["transcripts.json"])
+        self.assertEqual(service.calls, [])
+
+    def test_failures_that_would_repeat_are_told_apart_from_passing_ones(self):
+        cases = (
+            (http_error(401, "Invalid token"), True, "Invalid token"),
+            (http_error(402, "Credits used up"), True, "Credits used up"),
+            (http_error(403, "No permission to call Inference Providers"), True, "No permission"),
+            (http_error(404), True, "404 Error for url"),
+            (ValueError("Unexpected output format"), True, "Unexpected output format"),
+            (http_error(408, "Request timeout"), False, "Request timeout"),
+            (http_error(429, "Too many requests"), False, "Too many requests"),
+            (http_error(503), False, "503 Error for url"),
+            (TimeoutError("The request\ntimed out"), False, "The request timed out"),
+            # An error that quotes the request must not carry the token into the reports.
+            (OSError("Illegal header value b'Bearer hf_secret'"), False, "Illegal header value b'Bearer <token>'"),
+            (Exception(), False, "Exception"),
+        )
+        service = FakeService(outcomes=[error for error, _, _ in cases])
+        engine = self.engine(service)
+        for error, refused, reason in cases:
+            with self.subTest(error=error):
+                with self.assertRaises(RuntimeError) as caught:
+                    engine.transcribe(np.zeros(16, dtype=np.float32))
+                self.assertEqual(isinstance(caught.exception, app.RemoteRefused), refused)
+                message = str(caught.exception)
+                self.assertTrue(message.startswith("DeepInfra through Hugging Face did not transcribe the audio: "))
+                self.assertIn(reason, message)
+                self.assertNotIn("\n", message)
+                self.assertNotIn("hf_secret", message)
+        # A failed request releases the client as well.
+        self.assertEqual(service.closed, len(cases))
+
+    def test_main_uploads_only_with_remote_and_stops_when_the_service_refuses(self):
+        for name in ("a.wav", "b.wav", "c.wav"):
+            write_wav(self.root / name)
+        chat = self.root / "chat.txt"
+        chat.write_text(
+            "01/10/26, 10:00 - Ana: a.wav (attached)\n"
+            "01/10/26, 10:01 - Bob: b.wav (attached)\n"
+            "01/10/26, 10:02 - Eva: c.wav (attached)\n",
+            encoding="utf-8",
+        )
+        output = self.root / "reports/results.json"
+        annotated = self.root / "reports/annotated.txt"
+        service = FakeService(outcomes=["Hola", http_error(402, "Credits used up")])
+        local = mock.Mock(side_effect=AssertionError("Whisper must not run on this computer"))
+        stderr = io.StringIO()
+        with mock.patch.dict(sys.modules, {"huggingface_hub": service.module()}), \
+                mock.patch.object(app, "Whisper", local), \
+                redirect_stdout(io.StringIO()), redirect_stderr(stderr):
+            code = app.main([
+                str(chat), "-o", str(output), "--chat-output", str(annotated), "--language", "es", "--remote", "deepinfra",
+            ])
+        self.assertEqual(code, 1)
+        local.assert_not_called()
+        # The third recording is never uploaded once the second is refused.
+        self.assertEqual([(call["model"], call["extra_body"]) for call in service.calls],
+                         [("openai/whisper-large-v3-turbo", {"language": "es"})] * 2)
+        written = output.read_text(encoding="utf-8")
+        report = json.loads(written)
+        self.assertEqual(report["model"], "openai/whisper-large-v3-turbo on DeepInfra through Hugging Face")
+        self.assertEqual([(result["file"], result["status"]) for result in report["results"]],
+                         [("a.wav", "ok"), ("b.wav", "error")])
+        self.assertEqual((report["results"][0]["text"], report["results"][0]["languages"]), ("Hola", ["es"]))
+        self.assertIn("Credits used up", report["results"][1]["error"])
+        self.assertIn("Uploading the audio to DeepInfra through Hugging Face", stderr.getvalue())
+        self.assertIn("Stopped early", stderr.getvalue())
+        # The token is used to connect and appears nowhere else.
+        for text in (written, output.with_suffix(".txt").read_text(encoding="utf-8"), stderr.getvalue()):
+            self.assertNotIn("hf_secret", text)
+        self.assertEqual(annotated.read_text(encoding="utf-8").splitlines(), [
+            "01/10/26, 10:00 - Ana: a.wav (attached)",
+            "[Voice message transcript: Hola]",
+            "01/10/26, 10:01 - Bob: b.wav (attached)",
+            "[Voice message transcript: Error: DeepInfra through Hugging Face did not transcribe the audio: Credits used up]",
+            "01/10/26, 10:02 - Eva: c.wav (attached)",
+        ])
 
 
 if __name__ == "__main__":
