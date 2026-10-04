@@ -142,6 +142,10 @@ jobs:
           with tempfile.TemporaryDirectory(prefix="voxpad-wheel-") as directory:
               subprocess.run([sys.executable, "-I", "-m", "voxpad", "--help"], cwd=directory, check=True)
               subprocess.run([command, "--help"], cwd=directory, check=True)
+              # The desktop application's help needs no display.
+              subprocess.run([sys.executable, "-I", "-m", "voxpad.gui", "--help"], cwd=directory, check=True)
+              if shutil.which("voxpad-app") is None:
+                  raise RuntimeError("The installed wheel did not provide the voxpad-app command")
               audio = Path(directory) / "voice.opus"
               audio.write_bytes(b"dry-run fixture; no decoding or inference")
               completed = subprocess.run(

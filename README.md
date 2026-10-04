@@ -71,6 +71,12 @@ Unrecognized chat formats still allow audio transcription, with empty message me
 
 You can also run `python -m voxpad` with the same arguments. For source-only use without installing the command, install `requirements.txt` and run the module from the repository root.
 
+## Desktop application
+
+`voxpad-app` opens a window that does the same without the command line: choose an export ZIP, folder, chat `.txt` or audio file, pick the language and model, and press Transcribe. It shows the conversation with each voice message transcribed in place and saves `transcripts.json`, `transcripts.txt` and `chat_with_transcripts.txt` in a new folder beside the export, which you can change. Stop finishes the current voice message and keeps what is done.
+
+The application uses the same local Whisper models as the command and needs no additional packages. It is built on Tkinter, which ships with Python on Windows and macOS; on Linux install your distribution's Tk package for Python if it is missing (for example `python3-tk`). You can also start it with `python -m voxpad.gui`, optionally followed by the export to open.
+
 ## Development
 
 The `voxpad/` package contains the application, and `tests/` contains the test suite. `pyproject.toml` defines package metadata, dependencies and the `voxpad` command. Install the development tools in your virtual environment:

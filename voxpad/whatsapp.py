@@ -314,11 +314,11 @@ def write_annotated_chat(destination: Path, chat: Path, text: str,
     lines = []
     for number, line in enumerate(text.splitlines(keepends=True)):
         lines.append(line)
-        attached = occurrences.get((chat, number), [])
+        # A stopped run has no result yet for the recordings it did not reach.
+        attached = [results[path] for path in occurrences.get((chat, number), []) if path in results]
         if attached and not line.endswith(("\n", "\r")):
             lines.append(newline)
-        for path in attached:
-            result = results[path]
+        for result in attached:
             transcript = result["text"] or (f"Error: {result['error']}" if result["status"] == "error" else "No speech detected")
             lines.append(f"[Voice message transcript: {transcript}]{newline}")
     atomic_write(destination, "".join(lines))
@@ -342,6 +342,101 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def transcribe_export(source: Path, output: Path, chat_output: Path | None = None, *,
+                      model: str = DEFAULT_MODEL, language: str | None = None, keywords: list[str] | None = None,
+                      word_timestamps: bool = False, chunk_seconds: float = 30, dry_run: bool = False,
+                      chat_output_optional: bool = False, notify=None, progress=None, should_stop=None) -> dict | None:
+    """Transcribe every recording of an export and write the reports.
+
+    `notify(text)` receives status lines, `progress(done, total)` is called before
+    each recording and once at the end, and `should_stop()` is asked before each
+    recording. With `chat_output_optional`, an export without exactly one chat
+    skips the annotated chat instead of failing. Returns a summary, or None for a
+    dry run.
+    """
+    notify = notify or (lambda text: print(text, file=sys.stderr))
+    destinations = {output, output.with_suffix(".txt").resolve()}
+    if chat_output:
+        destinations.add(chat_output)
+    with open_export(source) as export:
+        # Check original inputs before hiding any output from discovery.
+        for path in export.audio + export.chats:
+            if path.resolve() not in destinations:
+                continue
+            is_original = path.suffix.lower() in AUDIO_EXTENSIONS
+            if not is_original:
+                try:
+                    is_original = bool(parse_chat(path.read_text(encoding="utf-8-sig"))) or path.name.lower() == "_chat.txt"
+                except UnicodeError:
+                    is_original = True
+            if is_original:
+                raise ValueError(f"Output must not overwrite an original chat or audio file: {path}")
+        export.audio = [path for path in export.audio if path.resolve() not in destinations]
+        export.chats = [path for path in export.chats if path.resolve() not in destinations]
+        if not export.audio:
+            raise ValueError("No audio files found. Export the WhatsApp chat with media included and keep the voice-note attachments.")
+        contexts, texts, occurrences = index_messages(export)
+        if chat_output and len(texts) != 1:
+            if not chat_output_optional:
+                raise ValueError("--chat-output requires exactly one readable UTF-8 chat .txt; use a chat .txt as the input to select it.")
+            chat_output = None
+        if chat_output and any(chat_output == path.resolve() for path in export.chats + export.audio):
+            raise ValueError("--chat-output must not overwrite an original chat or audio file.")
+        if dry_run:
+            for path in export.audio:
+                print(path.relative_to(export.root).as_posix())
+                for message in contexts[path]:
+                    print(f"  {message['timestamp']} | {message['sender'] or '(system message)'}")
+            return None
+        # Keep inference local and disable the model hub's optional usage telemetry.
+        os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+        os.environ["DO_NOT_TRACK"] = "1"
+        try:
+            import codecpod
+        except ImportError as error:
+            raise RuntimeError("Install the Python dependencies: python -m pip install -r requirements.txt") from error
+        notify(f"Loading Whisper {model} (the first run downloads the model)...")
+        engine = Whisper(model)
+        # Reports get shared: name the input without revealing where it is stored.
+        model_name = Path(model).name if Path(model).is_dir() else model
+        report = {"source": source.name, "model": f"Whisper {model_name}", "sample_rate": SAMPLE_RATE,
+                  "chunk_seconds": chunk_seconds, "results": []}
+        results: dict[Path, dict] = {}
+        stopped = False
+        for number, path in enumerate(export.audio, 1):
+            if should_stop and should_stop():
+                stopped = True
+                break
+            filename = path.relative_to(export.root).as_posix()
+            if progress:
+                progress(number - 1, len(export.audio))
+            notify(f"[{number}/{len(export.audio)}] {filename}")
+            result = {"file": filename, "messages": contexts[path], "status": "ok", "text": ""}
+            try:
+                result.update(transcribe_audio(
+                    path, engine, chunk_seconds=chunk_seconds, decoder=codecpod,
+                    language=language, keywords=keywords or [], word_timestamps=word_timestamps,
+                ))
+            except (OSError, ValueError, RuntimeError, EOFError) as error:
+                notify(f"  Error: {error}")
+                # Decoder and system messages may quote the full local path.
+                result.update(status="error", error=str(error).replace(str(path), filename))
+            report["results"].append(result)
+            results[path] = result
+            # Save after each recording so completed work survives interruption.
+            write_reports(output, report)
+        if chat_output:
+            chat, text = next(iter(texts.items()))
+            write_annotated_chat(chat_output, chat, text, occurrences, results)
+        if progress:
+            progress(len(report["results"]), len(export.audio))
+        return {
+            "report": report, "total": len(export.audio), "stopped": stopped,
+            "failures": sum(result["status"] == "error" for result in report["results"]),
+            "output": output, "chat_output": chat_output,
+        }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -362,76 +457,19 @@ def main(argv: list[str] | None = None) -> int:
     if not source.exists():
         parser.error(f"Input does not exist: {source}")
     try:
-        with open_export(source) as export:
-            # Check original inputs before hiding any output from discovery.
-            for path in export.audio + export.chats:
-                if path.resolve() not in destinations:
-                    continue
-                is_original = path.suffix.lower() in AUDIO_EXTENSIONS
-                if not is_original:
-                    try:
-                        is_original = bool(parse_chat(path.read_text(encoding="utf-8-sig"))) or path.name.lower() == "_chat.txt"
-                    except UnicodeError:
-                        is_original = True
-                if is_original:
-                    raise ValueError(f"Output must not overwrite an original chat or audio file: {path}")
-            export.audio = [path for path in export.audio if path.resolve() not in destinations]
-            export.chats = [path for path in export.chats if path.resolve() not in destinations]
-            if not export.audio:
-                raise ValueError("No audio files found. Export the WhatsApp chat with media included and keep the voice-note attachments.")
-            contexts, texts, occurrences = index_messages(export)
-            if chat_output and len(texts) != 1:
-                raise ValueError("--chat-output requires exactly one readable UTF-8 chat .txt; use a chat .txt as the input to select it.")
-            if chat_output and any(chat_output == path.resolve() for path in export.chats + export.audio):
-                raise ValueError("--chat-output must not overwrite an original chat or audio file.")
-            if args.dry_run:
-                for path in export.audio:
-                    print(path.relative_to(export.root).as_posix())
-                    for message in contexts[path]:
-                        print(f"  {message['timestamp']} | {message['sender'] or '(system message)'}")
-                return 0
-            # Keep inference local and disable the model hub's optional usage telemetry.
-            os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
-            os.environ["DO_NOT_TRACK"] = "1"
-            try:
-                import codecpod
-            except ImportError as error:
-                raise RuntimeError("Install the Python dependencies: python -m pip install -r requirements.txt") from error
-            print(f"Loading Whisper {args.model} (the first run downloads the model)...", file=sys.stderr)
-            model = Whisper(args.model)
-            # Reports get shared: name the input without revealing where it is stored.
-            model_name = Path(args.model).name if Path(args.model).is_dir() else args.model
-            report = {"source": source.name, "model": f"Whisper {model_name}", "sample_rate": SAMPLE_RATE,
-                      "chunk_seconds": args.chunk_seconds, "results": []}
-            results: dict[Path, dict] = {}
-            for number, path in enumerate(export.audio, 1):
-                filename = path.relative_to(export.root).as_posix()
-                print(f"[{number}/{len(export.audio)}] {filename}", file=sys.stderr)
-                result = {"file": filename, "messages": contexts[path], "status": "ok", "text": ""}
-                try:
-                    result.update(transcribe_audio(
-                        path, model, chunk_seconds=args.chunk_seconds, decoder=codecpod,
-                        language=args.language, keywords=args.keyword, word_timestamps=args.word_timestamps,
-                    ))
-                except (OSError, ValueError, RuntimeError, EOFError) as error:
-                    print(f"  Error: {error}", file=sys.stderr)
-                    # Decoder and system messages may quote the full local path.
-                    result.update(status="error", error=str(error).replace(str(path), filename))
-                report["results"].append(result)
-                results[path] = result
-                # Save after each recording so completed work survives interruption.
-                write_reports(output, report)
-            if chat_output:
-                chat, text = next(iter(texts.items()))
-                write_annotated_chat(chat_output, chat, text, occurrences, results)
-            failures = sum(result["status"] == "error" for result in report["results"])
-            print(f"Saved {len(report['results'])} transcripts ({failures} failed) to {output} and {output.with_suffix('.txt')}")
-            if chat_output:
-                print(f"Annotated chat: {chat_output}")
-            return 1 if failures else 0
+        summary = transcribe_export(
+            source, output, chat_output, model=args.model, language=args.language, keywords=args.keyword,
+            word_timestamps=args.word_timestamps, chunk_seconds=args.chunk_seconds, dry_run=args.dry_run,
+        )
     except (OSError, ValueError, RuntimeError, zipfile.BadZipFile, zipfile.LargeZipFile) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
+    if summary is None:
+        return 0
+    print(f"Saved {len(summary['report']['results'])} transcripts ({summary['failures']} failed) to {output} and {output.with_suffix('.txt')}")
+    if chat_output:
+        print(f"Annotated chat: {chat_output}")
+    return 1 if summary["failures"] else 0
 
 
 def cli() -> None:

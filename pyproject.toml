@@ -17,6 +17,9 @@ dev = ["build>=1.2"]
 [project.scripts]
 voxpad = "voxpad.whatsapp:cli"
 
+[project.gui-scripts]
+voxpad-app = "voxpad.gui:main"
+
 [tool.setuptools.packages.find]
 include = ["voxpad*"]
 
