@@ -14,7 +14,7 @@ import unittest
 from unittest import mock
 
 from voxpad import gui, whatsapp
-from tests.test_whatsapp import FakeWhisper, codecpod, np, write_wav
+from tests.test_whatsapp import FakeService, FakeWhisper, codecpod, http_error, np, write_wav
 
 # The window tests need no display: Qt can draw offscreen.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -62,6 +62,30 @@ class ChoiceTests(unittest.TestCase):
             folder.mkdir()
             self.assertEqual(gui.default_output_folder(archive), root / "WhatsApp Chat transcripts")
             self.assertEqual(gui.default_output_folder(folder), root / "export transcripts")
+
+    def test_run_on_box_offers_this_computer_first_and_marks_every_upload(self):
+        self.assertEqual(gui.PLACES[0], (gui.LOCAL, None))
+        self.assertIsNone(gui.remote_service(gui.LOCAL))
+        self.assertIn("Everything runs on this computer", gui.privacy_note(None))
+        self.assertEqual([service for _, service in gui.PLACES[1:]], list(whatsapp.REMOTE_SERVICES))
+        for label, service in gui.PLACES[1:]:
+            self.assertIn("uploads the audio", label)
+            self.assertEqual(gui.remote_service(label), service)
+            self.assertIn(f"uploaded to {whatsapp.REMOTE_SERVICES[service]}", gui.privacy_note(service))
+            self.assertNotIn("Everything runs on this computer", gui.privacy_note(service))
+
+    def test_remote_choices_that_cannot_start_are_explained(self):
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(gui, "saved_token", return_value=False) as saved:
+            # Nothing is checked, and no token is looked up, when Whisper runs here.
+            self.assertIsNone(gui.remote_problem(None, language="es", model=folder, token=None))
+            saved.assert_not_called()
+            self.assertIn("cannot be told the language", gui.remote_problem("hf-inference", language="es", model="tiny", token="hf_x"))
+            self.assertIn("model folder", gui.remote_problem("deepinfra", language="es", model=folder, token="hf_x"))
+            self.assertIn("Token box", gui.remote_problem("deepinfra", language="es", model="tiny", token=None))
+            self.assertIsNone(gui.remote_problem("deepinfra", language="es", model="tiny", token="hf_x"))
+            # A token from HF_TOKEN or a saved login is enough.
+            saved.return_value = True
+            self.assertIsNone(gui.remote_problem("hf-inference", language=None, model="tiny", token=None))
 
     def test_summary_mentions_failures_and_early_stops(self):
         summary = {"report": {"results": [{}, {}, {}]}, "total": 5, "failures": 1, "stopped": True, "output": Path("out/transcripts.json")}
@@ -122,6 +146,7 @@ class JobTests(unittest.TestCase):
         kind, summary, preview = events[-1]
         self.assertEqual(kind, "done")
         self.assertEqual((summary["total"], summary["failures"], summary["stopped"]), (2, 0, False))
+        self.assertIsNone(summary["refusal"])
         self.assertEqual(preview, self.chat.replace(
             "(archivo adjunto)\r\n", "(archivo adjunto)\r\n[Voice message transcript: part 1]\r\n",
         ).replace("(attached)\r\n", "(attached)\r\n[Voice message transcript: part 2]\r\n"))
@@ -159,6 +184,27 @@ class JobTests(unittest.TestCase):
         with mock.patch.object(whatsapp, "transcribe_export", side_effect=KeyError("boom")):
             gui.Job(self.export, self.folder, model="tiny", language=None, events=self.events).run()
         self.assertEqual(drain(self.events)[-1], ("failed", "Unexpected error: 'boom'"))
+
+    def test_remote_job_uploads_with_the_given_token_and_passes_on_a_refusal(self):
+        service = FakeService(token=None, outcomes=["Hola", http_error(401, "Invalid token")])
+        local = mock.Mock(side_effect=AssertionError("Whisper must not run on this computer"))
+        job = gui.Job(self.export, self.folder, model="tiny", language="es", events=self.events,
+                      remote="deepinfra", token="hf_typed")
+        with mock.patch.dict(sys.modules, {"huggingface_hub": service.module()}), mock.patch.object(whatsapp, "Whisper", local):
+            job.run()
+        events = drain(self.events)
+        local.assert_not_called()
+        self.assertEqual(service.clients[0]["token"], "hf_typed")
+        self.assertEqual([(call["model"], call["extra_body"]) for call in service.calls],
+                         [("openai/whisper-tiny", {"language": "es"})] * 2)
+        kind, summary, preview = events[-1]
+        self.assertEqual(kind, "done")
+        self.assertEqual((summary["total"], summary["failures"], summary["stopped"]), (2, 1, True))
+        self.assertIn("Invalid token", summary["refusal"])
+        self.assertIn("[Voice message transcript: Hola]", preview)
+        # The token is used to connect and is shown or saved nowhere.
+        saved = "".join(path.read_bytes().decode("utf-8") for path in self.folder.iterdir())
+        self.assertNotIn("hf_typed", repr(events) + saved)
 
 
 @unittest.skipUnless(QtWidgets is not None and codecpod is not None and np is not None,
@@ -245,6 +291,55 @@ class WindowTests(unittest.TestCase):
         self.assertIn("No audio files found", dialog.call_args.args[2])
         self.assertTrue(window.start_button.isEnabled())
         self.assertFalse(window.open_button.isEnabled())
+
+    def choose_service(self, service):
+        self.window.place.setCurrentText(next(label for label, key in gui.PLACES if key == service))
+
+    def test_running_elsewhere_is_an_explicit_choice_that_the_window_spells_out(self):
+        window = self.window
+        self.assertEqual(window.place.currentText(), gui.LOCAL)
+        self.assertFalse(window.place.isEditable())
+        self.assertFalse(window.token.isEnabled())
+        self.assertEqual(window.token.echoMode(), QtWidgets.QLineEdit.EchoMode.Password)
+        self.assertIn("Everything runs on this computer", window.subtitle.text())
+        self.choose_service("deepinfra")
+        self.assertTrue(window.token.isEnabled())
+        self.assertIn("uploaded to DeepInfra through Hugging Face", window.subtitle.text())
+        self.assertNotIn("Everything runs on this computer", window.subtitle.text())
+        window.place.setCurrentText(gui.LOCAL)
+        self.assertFalse(window.token.isEnabled())
+        self.assertIn("Everything runs on this computer", window.subtitle.text())
+
+    def test_remote_transcription_needs_a_token_uses_the_typed_one_and_explains_a_refusal(self):
+        window = self.window
+        window.set_source(self.export)
+        window.language.setCurrentText("Spanish")
+        self.choose_service("deepinfra")
+        service = FakeService(token=None, outcomes=[http_error(402, "Credits used up")])
+        local = mock.Mock(side_effect=AssertionError("Whisper must not run on this computer"))
+        with mock.patch.dict(sys.modules, {"huggingface_hub": service.module()}), \
+                mock.patch.object(whatsapp, "Whisper", local), \
+                mock.patch.object(QtWidgets.QMessageBox, "critical") as problem, \
+                mock.patch.object(QtWidgets.QMessageBox, "warning") as refusal:
+            # Without a typed or saved token nothing starts.
+            window.start_button.click()
+            self.assertIn("Token box", problem.call_args.args[2])
+            self.assertIsNone(window.job)
+            self.assertEqual(service.clients, [])
+            window.token.setText(" hf_typed ")
+            window.start_button.click()
+            self.assertFalse(window.place.isEnabled())
+            self.assertFalse(window.token.isEnabled())
+            self.finish()
+        local.assert_not_called()
+        self.assertEqual(service.clients[0]["token"], "hf_typed")
+        self.assertEqual((service.calls[0]["model"], service.calls[0]["extra_body"]),
+                         ("openai/whisper-large-v3-turbo", {"language": "es"}))
+        self.assertIn("Credits used up", refusal.call_args.args[2])
+        self.assertIn("stopped early", window.status.text())
+        self.assertTrue(window.place.isEnabled())
+        self.assertTrue(window.token.isEnabled())
+        self.assertNotIn("hf_typed", window.text.toPlainText() + window.status.text())
 
 
 if __name__ == "__main__":

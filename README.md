@@ -80,7 +80,7 @@ export HF_TOKEN=hf_...
 voxpad "WhatsApp Chat.zip" --language es --remote deepinfra
 ```
 
-**This uploads your audio.** Each voice message is decoded on your computer and sent, in chunks of at most 30 seconds, to the service you name. Chat text, sender names, filenames and transcripts are not sent. Nothing is uploaded unless you pass `--remote`, and the desktop and browser apps never upload.
+**This uploads your audio.** Each voice message is decoded on your computer and sent, in chunks of at most 30 seconds, to the service you name. Chat text, sender names, filenames and transcripts are not sent. Nothing is uploaded unless you pass `--remote` or choose a hosted service in the desktop application, and the browser app never uploads.
 
 | Service | Audio goes to | `--language` |
 |---|---|---|
@@ -96,6 +96,8 @@ A recording that fails is recorded with its error and the run continues, as it d
 ## Desktop application
 
 `voxpad-app` opens a window that does the same without the command line: choose an export ZIP, folder, chat `.txt` or audio file, or drop it on the window, pick the language and model, and press Transcribe. It shows the conversation with each voice message transcribed in place and saves `transcripts.json`, `transcripts.txt` and `chat_with_transcripts.txt` in a new folder beside the export, which you can change. Stop finishes the current voice message and keeps what is done.
+
+Whisper runs on this computer unless you pick a hosted service under **Run on**. Each choice that uploads the audio says so, and the window then states where the voice messages go; [Remote transcription](#remote-transcription) describes the services, what is sent and what it costs. The access token comes from `HF_TOKEN` or a saved `hf auth login`, or you can paste one in the Token box. A pasted token is used until the window closes and is not saved. Keywords and word timestamps are not offered in the window.
 
 The application uses the same local Whisper models as the command. Its window is built with Qt through [PySide6](https://pypi.org/project/PySide6/), which is installed with the other dependencies; nothing has to be installed separately on a desktop system. A minimal Linux installation without a desktop may lack the system libraries Qt loads, such as `libEGL`, `libGL`, `libxkbcommon`, `fontconfig` and `dbus`. You can also start it with `python -m voxpad.gui` or `python voxpad/gui.py`, optionally followed by the export to open.
 

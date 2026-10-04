@@ -30,6 +30,8 @@ LANGUAGES = tuple((
 DEFAULT_MODEL = "large-v3-turbo"
 # Hosted services that can run Whisper instead of this computer, and who receives the audio.
 REMOTE_SERVICES = {"deepinfra": "DeepInfra through Hugging Face", "hf-inference": "Hugging Face"}
+# Of those, the services that can be told the spoken language; the others always detect it.
+REMOTE_LANGUAGE_SERVICES = {"deepinfra"}
 REMOTE_TIMEOUT_SECONDS = 120
 SAMPLE_RATE = 16000
 # A chunk ends at the quietest tenth of a second within its last five seconds.
@@ -238,8 +240,8 @@ def remote_conflict(remote: str | None, *, model: str, language: str | None, key
         return "--keyword is not available with --remote"
     if word_timestamps:
         return "--word-timestamps is not available with --remote"
-    if language and remote == "hf-inference":
-        return "--language is not available with --remote hf-inference; use --remote deepinfra, or let Whisper detect the language"
+    if language and remote not in REMOTE_LANGUAGE_SERVICES:
+        return f"--language is not available with --remote {remote}; use --remote deepinfra, or let Whisper detect the language"
     if Path(model).is_dir():
         return "--remote needs a Whisper size or a Hugging Face repository as --model, not a folder"
     return None
@@ -261,15 +263,16 @@ def wav_bytes(samples) -> bytes:
 class RemoteWhisper:
     """Run Whisper on a hosted service through Hugging Face, uploading one chunk of audio at a time."""
 
-    def __init__(self, model: str = DEFAULT_MODEL, service: str = "deepinfra"):
+    def __init__(self, model: str = DEFAULT_MODEL, service: str = "deepinfra", token: str | None = None):
         try:
             from huggingface_hub import InferenceClient, get_token
         except ImportError as error:
             raise RuntimeError("Install the Python dependencies: python -m pip install -r requirements.txt") from error
-        token = get_token()
+        # A token given here wins over HF_TOKEN and a saved login.
+        token = token or get_token()
         if not token:
-            raise RuntimeError("--remote needs a Hugging Face access token that may call Inference Providers: "
-                               "set HF_TOKEN or run `hf auth login`.")
+            raise RuntimeError("Remote transcription needs a Hugging Face access token that may call Inference "
+                               "Providers: set HF_TOKEN or run `hf auth login`.")
         self.model = remote_model(model)
         self.service = REMOTE_SERVICES[service]
         # Hugging Face's own service tells raw audio apart by this header; DeepInfra receives a form upload.
@@ -427,7 +430,7 @@ def build_parser() -> argparse.ArgumentParser:
 def transcribe_export(source: Path, output: Path, chat_output: Path | None = None, *,
                       model: str = DEFAULT_MODEL, language: str | None = None, keywords: list[str] | None = None,
                       word_timestamps: bool = False, chunk_seconds: float = 30, dry_run: bool = False,
-                      remote: str | None = None, chat_output_optional: bool = False,
+                      remote: str | None = None, remote_token: str | None = None, chat_output_optional: bool = False,
                       notify=None, progress=None, should_stop=None) -> dict | None:
     """Transcribe every recording of an export and write the reports.
 
@@ -435,8 +438,10 @@ def transcribe_export(source: Path, output: Path, chat_output: Path | None = Non
     each recording and once at the end, and `should_stop()` is asked before each
     recording. With `chat_output_optional`, an export without exactly one chat
     skips the annotated chat instead of failing. `remote` names a hosted service
-    that receives the audio instead of Whisper running here. Returns a summary,
-    or None for a dry run.
+    that receives the audio instead of Whisper running here, and `remote_token`
+    is the access token for it when the saved one is not to be used. Returns a
+    summary, whose `refusal` says why a hosted service ended the run early, or
+    None for a dry run.
     """
     notify = notify or (lambda text: print(text, file=sys.stderr))
     conflict = remote_conflict(remote, model=model, language=language, keywords=keywords, word_timestamps=word_timestamps)
@@ -483,7 +488,7 @@ def transcribe_export(source: Path, output: Path, chat_output: Path | None = Non
         except ImportError as error:
             raise RuntimeError("Install the Python dependencies: python -m pip install -r requirements.txt") from error
         if remote:
-            engine = RemoteWhisper(model, remote)
+            engine = RemoteWhisper(model, remote, remote_token)
             notify(f"Uploading the audio to {engine.service} to transcribe it with {engine.model}...")
             model_name = f"{engine.model} on {engine.service}"
         else:
@@ -495,6 +500,7 @@ def transcribe_export(source: Path, output: Path, chat_output: Path | None = Non
                   "chunk_seconds": chunk_seconds, "results": []}
         results: dict[Path, dict] = {}
         stopped = False
+        refusal = None
         for number, path in enumerate(export.audio, 1):
             if should_stop and should_stop():
                 stopped = True
@@ -511,9 +517,9 @@ def transcribe_export(source: Path, output: Path, chat_output: Path | None = Non
                 ))
             except RemoteRefused as error:
                 notify(f"  Error: {error}")
-                result.update(status="error", error=str(error))
                 # The remaining recordings would be refused alike, so keep what is done and stop.
-                stopped = True
+                refusal = str(error)
+                result.update(status="error", error=refusal)
             except (OSError, ValueError, RuntimeError, EOFError) as error:
                 notify(f"  Error: {error}")
                 # Decoder and system messages may quote the full local path.
@@ -522,7 +528,8 @@ def transcribe_export(source: Path, output: Path, chat_output: Path | None = Non
             results[path] = result
             # Save after each recording so completed work survives interruption.
             write_reports(output, report)
-            if stopped:
+            if refusal:
+                stopped = True
                 break
         if chat_output:
             chat, text = next(iter(texts.items()))
@@ -530,7 +537,7 @@ def transcribe_export(source: Path, output: Path, chat_output: Path | None = Non
         if progress:
             progress(len(report["results"]), len(export.audio))
         return {
-            "report": report, "total": len(export.audio), "stopped": stopped,
+            "report": report, "total": len(export.audio), "stopped": stopped, "refusal": refusal,
             "failures": sum(result["status"] == "error" for result in report["results"]),
             "output": output, "chat_output": chat_output,
         }
