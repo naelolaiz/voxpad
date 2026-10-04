@@ -1,8 +1,8 @@
 # VoxPad
 
-Local audio and WhatsApp transcription powered by Whistle, with real-time cross-platform dictation planned.
+Local audio and WhatsApp transcription powered by Whisper, with real-time cross-platform dictation planned.
 
-VoxPad currently transcribes audio files and exported WhatsApp voice messages using [Cactus Whistle](https://cactuscompute.com/blog/whistle). It accepts an export ZIP, an extracted folder, a chat `.txt` with nearby media, or an individual audio file. It associates voice notes with sender names and timestamps from common Android and iPhone chat exports.
+VoxPad currently transcribes audio files and exported WhatsApp voice messages using [OpenAI Whisper](https://github.com/openai/whisper), run locally through [faster-whisper](https://github.com/SYSTRAN/faster-whisper). It accepts an export ZIP, an extracted folder, a chat `.txt` with nearby media, or an individual audio file. It associates voice notes with sender names and timestamps from common Android and iPhone chat exports.
 
 Export your WhatsApp chat **with media included**. Text-only exports do not contain audio to transcribe. Supported audio formats include WhatsApp `.opus` and `.m4a` files, plus OGG, AAC, MP3, WAV, FLAC, AMR and AIFF. Videos are not transcribed.
 
@@ -20,7 +20,9 @@ On Windows, create the environment with `py -m venv .venv` and activate it in Po
 
 The [codecpod](https://github.com/zhoukezi/codecpod) dependency decodes audio, mixes channels to mono and resamples to 16 kHz through Python. Its wheels include native audio codec libraries for Linux x86-64, macOS and Windows x86-64. No FFmpeg executable or subprocess is needed. The codec library embeds a reduced FFmpeg build and depends on NumPy, which is installed automatically. Platforms without a wheel require building native code; see the package documentation.
 
-The first transcription downloads Whistle's model and platform runtime. Subsequent runs use cached files. Audio is processed locally; the script disables Needle's optional telemetry.
+The first transcription downloads the Whisper model from Hugging Face, about 1.6 GB for the default `large-v3-turbo`. Subsequent runs use the cached files. Audio is processed locally, on a GPU when one is available; the script disables the model hub's optional telemetry.
+
+On Intel Macs use Python 3.13 or older: one of faster-whisper's dependencies has no Intel macOS build for Python 3.14.
 
 ## Usage
 
@@ -58,12 +60,12 @@ Transcribe one voice note and include word timestamps or names to favor:
 
 ```bash
 voxpad "PTT-20261004-WA0001.opus" \
-  --word-timestamps --keyword "María" --keyword "Cactus"
+  --word-timestamps --keyword "María" --keyword "VoxPad"
 ```
 
-Whistle supports English (`en`), German (`de`), French (`fr`), Spanish (`es`), Italian (`it`), Dutch (`nl`) and Polish (`pl`). Omit `--language` to detect language per chunk. `--model /path/to/whistle.cact` uses local weights; the runtime must also be cached for fully offline use.
+Whisper recognizes about a hundred languages; pass one as its code, such as `--language es`, or omit `--language` to detect it per chunk. Naming the language is more reliable for short voice notes. `--model` selects another Whisper size, for example `small` or `medium` on a slower computer, or a folder containing a converted model for offline use.
 
-Whistle processes at most 30 seconds per call. The script decodes each recording to 16 kHz mono floating-point samples, then sends every frame in consecutive chunks, including the final partial chunk. A chunk that cannot hold the rest of the recording ends at the quietest moment of its last five seconds, so boundaries usually fall in a pause instead of inside a word. Long voice notes are fully processed; speech without a pause near a boundary can still be cut mid-word and may be less accurate there. `--chunk-seconds` selects a shorter maximum chunk length. Word timestamps are relative to the full voice note, while chat timestamps stay in their original format to avoid guessing the date locale. Decoded recordings are held in memory, using about 3.7 MiB per minute of audio.
+The script sends Whisper at most 30 seconds per call. The script decodes each recording to 16 kHz mono floating-point samples, then sends every frame in consecutive chunks, including the final partial chunk. A chunk that cannot hold the rest of the recording ends at the quietest moment of its last five seconds, so boundaries usually fall in a pause instead of inside a word. Long voice notes are fully processed; speech without a pause near a boundary can still be cut mid-word and may be less accurate there. `--chunk-seconds` selects a shorter maximum chunk length. Word timestamps are relative to the full voice note, while chat timestamps stay in their original format to avoid guessing the date locale. Decoded recordings are held in memory, using about 3.7 MiB per minute of audio.
 
 Unrecognized chat formats still allow audio transcription, with empty message metadata. Missing or omitted media cannot be recovered. A failed audio file is recorded with its error and processing continues. Reports are saved after each recording. Exit status is `0` on success, `1` for failures and `130` for interruption.
 
@@ -81,7 +83,7 @@ python scripts/dev.py build
 python scripts/dev.py check
 ```
 
-These helpers work on Linux, macOS and Windows, including when called from another directory. Tests use generated audio, codecpod for decoding and a fake transcription model; they do not download Whistle. The test helper requires the audio dependencies so decoding tests cannot silently skip. You can also run `python -m unittest discover -v` directly.
+These helpers work on Linux, macOS and Windows, including when called from another directory. Tests use generated audio, codecpod for decoding and a fake transcription model; they do not download Whisper. The test helper requires the audio dependencies so decoding tests cannot silently skip. You can also run `python -m unittest discover -v` directly.
 
 Builds use the standard Python build frontend (`python -m build`) and produce a wheel and source archive in `dist/`. VoxPad contains no compiled extensions, so its `py3-none-any.whl` installs across supported platforms. Native dependencies are installed separately for the target platform. To install a wheel, run `python -m pip install dist/voxpad-0.1.0-py3-none-any.whl`. The source archive includes tests and development helpers.
 
@@ -93,9 +95,19 @@ Security checks run in GitHub Actions as well. CodeQL analyses the Python, JavaS
 
 `web/` contains a static browser app that does the same job without installing anything: drop a WhatsApp export ZIP, or a chat `.txt` with its audio files, and download the conversation with each voice message transcribed in place, as text and as JSON. It is published to GitHub Pages from `main`.
 
-Everything runs in the browser tab. The export is read, decoded and transcribed locally with Whistle compiled to WebAssembly; no chat text, audio, filenames or transcripts are uploaded. The first transcription downloads the Whistle model and runtime (about 17 MB) from Hugging Face and caches them in the browser. Voice messages of any length are transcribed in full: as in the command-line tool, each recording is sent to Whistle in consecutive chunks of at most 30 seconds that end in a pause where there is one. An export ZIP is read by byte ranges, so photos and videos in it are skipped without being loaded and the archive itself may be several gigabytes. The chat text and recordings, which are held in memory, may total 512 MiB. ZIP64 archives (4 GiB or more, or over 65,534 files) and encrypted archives are unsupported.
+Everything runs in the browser tab. The export is read, decoded and transcribed locally with Whisper through [Transformers.js](https://github.com/huggingface/transformers.js); no chat text, audio, filenames or transcripts are uploaded. The first transcription downloads the model from Hugging Face and caches it in the browser. Voice messages of any length are transcribed in full: as in the command-line tool, each recording is sent to Whisper in consecutive chunks of at most 30 seconds that end in a pause where there is one. An export ZIP is read by byte ranges, so photos and videos in it are skipped without being loaded and the archive itself may be several gigabytes. The chat text and recordings, which are held in memory, may total 512 MiB. ZIP64 archives (4 GiB or more, or over 65,534 files) and encrypted archives are unsupported.
 
-Two safeguards back the privacy claim. The built page carries a Content-Security-Policy that allows connections only to its own site and to Hugging Face, and the speech worker is started so that the same policy binds it. The model and runtime are pinned to exact revisions and checked against their SHA-256 before they are run or cached; to update them, change the URLs and digests in both `web/src/whistle-worker.js` and `web/tests/browser/assets.js`. The policy needs a browser that supports `'wasm-unsafe-eval'` (Chrome 97, Firefox 102, Safari 16 or newer) and is not applied by the development server.
+The app picks the model for the device:
+
+| Model | Download | Used when |
+|---|---|---|
+| Whisper large-v3-turbo | 1.4 GB | The browser offers WebGPU with 16-bit float support. Most accurate. |
+| Whisper small | 240 MB | Everywhere else, on WebAssembly. Also selectable to save download size. |
+| Whisper tiny | 42 MB | Only when selected. Fastest and least accurate; the browser tests use it. |
+
+Whisper small on WebAssembly runs on a single thread, because a static host cannot enable the browser isolation that threads need: expect roughly ten to fifteen seconds per voice message on a desktop computer. If the larger model cannot start, the app falls back to Whisper small. Without a chosen language, the language of each voice message is detected from its first audible part.
+
+Two safeguards back the privacy claim. The built page carries a Content-Security-Policy that allows connections only to its own site and to Hugging Face, and the speech worker is started so that the same policy binds it. The speech runtime's WebAssembly files are published with the app instead of being loaded from a CDN. Every model file is pinned to an exact revision and checked against its SHA-256 before it is used or cached; to update a model, change its revision, sizes and digests in `web/src/models.js`. The policy needs a browser that supports `'wasm-unsafe-eval'` (Chrome 97, Firefox 102, Safari 16 or newer) and is not applied by the development server.
 
 Develop it with Node.js 22.12 or newer:
 
@@ -109,7 +121,7 @@ npx playwright install chromium
 npm run test:browser # end-to-end tests against the production build
 ```
 
-The browser tests run the real Whistle model on a synthetic recording, so their first run downloads the model and runtime into `web/node_modules/.cache/whistle`. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to use an existing Chromium.
+The browser tests run the real Whisper tiny model on a synthetic recording, so their first run downloads it into `web/node_modules/.cache/whisper`. The WebGPU path cannot run in a headless test browser and is not covered by them. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to use an existing Chromium.
 
 ## Roadmap
 

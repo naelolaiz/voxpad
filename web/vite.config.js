@@ -1,10 +1,11 @@
+import { cp, mkdir, readdir } from 'node:fs/promises';
 import { defineConfig } from 'vite';
 
 // GitHub Pages cannot send response headers, so the policy ships inside the
 // built page. It limits connections to this site and the model host, which
 // backs the promise that an export is never uploaded. Workers started from
-// blob: URLs inherit it; blob: scripts are needed to start the verified speech
-// runtime. The development server injects styles inline, so builds only.
+// blob: URLs inherit it. The development server injects styles inline, so
+// builds only.
 const CONTENT_SECURITY_POLICY = [
   "default-src 'none'",
   "script-src 'self' blob: 'wasm-unsafe-eval'",
@@ -27,8 +28,25 @@ const contentSecurityPolicy = {
   }],
 };
 
+// The speech runtime's WebAssembly files are published with the app, so the
+// page never loads code from a CDN.
+const speechRuntime = {
+  name: 'voxpad-speech-runtime',
+  apply: 'build',
+  async closeBundle() {
+    const source = new URL('./node_modules/onnxruntime-web/dist/', import.meta.url);
+    const target = new URL('./dist/ort/', import.meta.url);
+    await mkdir(target, { recursive: true });
+    for (const name of await readdir(source)) {
+      if (name.startsWith('ort-wasm-simd-threaded')) await cp(new URL(name, source), new URL(name, target));
+    }
+  },
+};
+
 export default defineConfig({
   base: './',
   build: { target: 'es2022' },
-  plugins: [contentSecurityPolicy],
+  // One self-contained module, so the worker can be started from a blob: URL.
+  worker: { format: 'es', rollupOptions: { output: { inlineDynamicImports: true } } },
+  plugins: [contentSecurityPolicy, speechRuntime],
 });

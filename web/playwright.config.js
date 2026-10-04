@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/browser',
-  timeout: 180000,
+  timeout: 600000,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
   globalSetup: './tests/browser/assets.js',

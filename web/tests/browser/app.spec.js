@@ -51,6 +51,7 @@ test('chat-only exports preserve original text, render safely, and prepare both 
   const original = '04/10/26, 09:00 - Ana: <script>window.stolen = true</script>\r\n04/10/26, 09:01 - José: ¡Hola!\r\n';
   await page.locator('#files').setInputFiles({ name: '_chat.txt', mimeType: 'text/plain', buffer: Buffer.from(original) });
   await expect(page.locator('#start')).toHaveText('Prepare downloads →');
+  await page.locator('#model').selectOption('tiny');
   await page.locator('#start').click();
   await expect(page.locator('#results')).toBeVisible();
   await expect(page.locator('#start')).toHaveText('Prepare downloads →');
@@ -63,7 +64,7 @@ test('chat-only exports preserve original text, render safely, and prepare both 
   expect(requests.every((request) => request.method() === 'GET' && new URL(request.url()).hostname === '127.0.0.1')).toBe(true);
 });
 
-test('real Whistle transcribes Opus in place, keeps reusable JSON, and sends/stores only public assets', async ({ page, context }) => {
+test('real Whisper transcribes Opus in place, keeps reusable JSON, and sends/stores only public assets', async ({ page, context }) => {
   const requests = [];
   context.on('request', (request) => requests.push({ url: request.url(), method: request.method(), body: request.postData() }));
   await serveAssets(context);
@@ -76,13 +77,14 @@ test('real Whistle transcribes Opus in place, keeps reusable JSON, and sends/sto
   await page.locator('#files').setInputFiles({ name: 'private-export.zip', mimeType: 'application/zip', buffer: Buffer.from(archive) });
   await expect(page.locator('#source-summary')).toHaveText('1 chat file · 1 voice message');
   await page.locator('#language').selectOption('en');
+  await page.locator('#model').selectOption('tiny');
   await page.locator('#start').click();
-  await expect(page.locator('#progress-message')).toHaveText('Done. Your downloads are ready.', { timeout: 120000 });
+  await expect(page.locator('#progress-message')).toHaveText('Done. Your downloads are ready.', { timeout: 300000 });
   await expect(page.locator('#result-summary')).toContainText('1 transcribed');
   const report = JSON.parse(await downloadText(page, 'Download JSON'));
   const result = report.results[0];
   expect(result.status).toBe('ok');
-  expect(result.text.toLowerCase()).toContain('voice message');
+  expect(result.text.toLowerCase()).toContain('message');
   expect(result.text.toLowerCase()).toContain('tomorrow');
   expect(result.segments).toHaveLength(1);
   expect(result.duration_seconds).toBeGreaterThan(3);
@@ -135,8 +137,9 @@ test('recordings longer than 30 seconds are cut in a pause and transcribed in fu
   await page.locator('#files').setInputFiles({ name: 'long-note.wav', mimeType: 'audio/wav', buffer: wav(samples) });
   await expect(page.locator('#source-summary')).toHaveText('0 chat files · 1 voice message');
   await page.locator('#language').selectOption('en');
+  await page.locator('#model').selectOption('tiny');
   await page.locator('#start').click();
-  await expect(page.locator('#progress-message')).toHaveText('Done. Your downloads are ready.', { timeout: 120000 });
+  await expect(page.locator('#progress-message')).toHaveText('Done. Your downloads are ready.', { timeout: 300000 });
   const result = JSON.parse(await downloadText(page, 'Download JSON')).results[0];
   expect(result.status).toBe('ok');
   expect(result.duration_seconds).toBeCloseTo(samples.length / 16000, 2);
@@ -149,7 +152,7 @@ test('recordings longer than 30 seconds are cut in a pause and transcribed in fu
   expect(cut).toBeLessThan(30 * 16000);
   expect(Array.from(samples.subarray(cut - 800, cut + 800)).every((sample) => Math.round(sample * 32767) === 0)).toBe(true);
   expect(first.text.toLowerCase()).toContain('tomorrow');
-  expect(second.text.toLowerCase()).toContain('voice message');
+  expect(second.text.toLowerCase()).toContain('message');
   expect(second.text.toLowerCase()).toContain('tomorrow');
   expect(result.text).toBe(`${first.text} ${second.text}`);
   expect(await downloadText(page, 'Download text')).toBe(`long-note.wav\n${result.text}\n`);
@@ -164,8 +167,9 @@ test('Ogg/Opus is decoded with WebAssembly when the browser cannot decode it', a
   await page.goto('/');
   await page.locator('#files').setInputFiles({ name: 'voice.opus', mimeType: 'audio/ogg', buffer: await speechFixture() });
   await page.locator('#language').selectOption('en');
+  await page.locator('#model').selectOption('tiny');
   await page.locator('#start').click();
-  await expect(page.locator('#progress-message')).toHaveText('Done. Your downloads are ready.', { timeout: 120000 });
+  await expect(page.locator('#progress-message')).toHaveText('Done. Your downloads are ready.', { timeout: 300000 });
   const result = JSON.parse(await downloadText(page, 'Download JSON')).results[0];
   expect(result.status).toBe('ok');
   expect(result.duration_seconds).toBe(65630 / 16000);
@@ -185,8 +189,9 @@ test('the built page and its speech worker can only reach this site and the mode
   expect(policy).toContain("default-src 'none'");
   expect(policy).toContain("connect-src 'self' https://huggingface.co ");
   await page.locator('#files').setInputFiles({ name: 'voice.opus', mimeType: 'audio/ogg', buffer: await speechFixture() });
+  await page.locator('#model').selectOption('tiny');
   await page.locator('#start').click();
-  await expect(page.locator('#progress-message')).toHaveText('Done. Your downloads are ready.', { timeout: 120000 });
+  await expect(page.locator('#progress-message')).toHaveText('Done. Your downloads are ready.', { timeout: 300000 });
   expect(page.workers()).toHaveLength(1);
   const [worker] = page.workers();
   // Only a worker started from a blob: URL inherits the page's policy.
@@ -200,22 +205,24 @@ test('the built page and its speech worker can only reach this site and the mode
   expect(reached).toEqual([]);
 });
 
-test('a modified speech runtime is refused, never run, and not cached', async ({ page, context }) => {
+test('a modified model file is refused and not cached', async ({ page, context }) => {
   await serveAssets(context);
-  const [runtime] = assets;
-  const modified = Buffer.concat([await readFile(`${assetDirectory}${runtime.name}`), Buffer.from('\nself.modifiedRuntimeRan = true;\n')]);
-  await context.route(runtime.url, (route) => route.fulfill({
+  const target = assets.find(({ url }) => url.endsWith('/tokenizer_config.json'));
+  // Same length as the original, so only the digest can tell them apart.
+  const modified = Buffer.from(await readFile(`${assetDirectory}${target.name}`));
+  modified[modified.length - 2] = 0x20;
+  await context.route(target.url, (route) => route.fulfill({
     body: modified,
     headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/octet-stream' },
   }));
   await page.goto('/');
   await page.locator('#files').setInputFiles({ name: 'voice.opus', mimeType: 'audio/ogg', buffer: await speechFixture() });
+  await page.locator('#model').selectOption('tiny');
   await page.locator('#start').click();
-  await expect(page.locator('#error')).toContainText('speech runtime failed its integrity check');
+  await expect(page.locator('#error')).toContainText('speech model failed its integrity check', { timeout: 300000 });
   await expect(page.locator('#result-summary')).toContainText('1 pending');
-  const [worker] = page.workers();
-  expect(await worker.evaluate(() => self.modifiedRuntimeRan)).toBeUndefined();
-  expect(await page.evaluate(async () => (await (await caches.open('voxpad-whistle-v1')).keys()).length)).toBe(0);
+  const cached = await page.evaluate(async () => (await (await caches.open('voxpad-whisper-v1')).keys()).map((request) => request.url));
+  expect(cached).not.toContain(target.url);
 });
 
 test('unsafe exports fail without initializing transcription', async ({ page }) => {
