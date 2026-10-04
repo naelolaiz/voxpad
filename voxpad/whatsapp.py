@@ -216,7 +216,7 @@ def atomic_write(destination: Path, text: str) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=destination.parent,
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", newline="", dir=destination.parent,
                                          prefix=f".{destination.name}.", delete=False) as handle:
             temporary = Path(handle.name)
             handle.write(text)

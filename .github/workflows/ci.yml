@@ -1,0 +1,145 @@
+name: Tests and packages
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DO_NOT_TRACK: "1"
+  NEEDLE_TELEMETRY: "0"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONUTF8: "1"
+
+jobs:
+  test:
+    name: Test / ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15-intel, macos-15]
+        python: ["3.10", "3.14"]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.txt
+      - name: Install application and development dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Run tests without downloading models
+        run: python scripts/dev.py test
+
+  package:
+    name: Build wheel and source distribution
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.txt
+      - name: Install application and development dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Build wheel and source distribution
+        run: python scripts/dev.py build
+      - name: Install source distribution and smoke-test its module CLI
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess
+          import sys
+          import tempfile
+
+          archives = list(Path("dist").glob("*.tar.gz"))
+          if len(archives) != 1:
+              raise RuntimeError(f"Expected one source distribution, found: {archives}")
+          subprocess.run(
+              [sys.executable, "-m", "pip", "install", "--force-reinstall", "--no-deps", str(archives[0].resolve())],
+              check=True,
+          )
+          with tempfile.TemporaryDirectory(prefix="voxpad-sdist-") as directory:
+              subprocess.run([sys.executable, "-I", "-m", "voxpad", "--help"], cwd=directory, check=True)
+      - name: Upload installable packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-distributions
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  install-wheel:
+    name: Install wheel / ${{ matrix.os }}
+    needs: package
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15-intel, macos-15]
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Download built distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: python-distributions
+          path: dist
+      - name: Install wheel and smoke-test the CLI outside the source directory
+        shell: python
+        run: |
+          from pathlib import Path
+          import shutil
+          import subprocess
+          import sys
+          import tempfile
+
+          wheels = list(Path("dist").glob("*-py3-none-any.whl"))
+          if len(wheels) != 1:
+              raise RuntimeError(f"Expected one universal Python wheel, found: {wheels}")
+          subprocess.run([sys.executable, "-m", "pip", "install", str(wheels[0].resolve())], check=True)
+          subprocess.run([sys.executable, "-m", "pip", "check"], check=True)
+          command = shutil.which("voxpad")
+          if command is None:
+              raise RuntimeError("The installed wheel did not provide the voxpad command")
+          with tempfile.TemporaryDirectory(prefix="voxpad-wheel-") as directory:
+              subprocess.run([sys.executable, "-I", "-m", "voxpad", "--help"], cwd=directory, check=True)
+              subprocess.run([command, "--help"], cwd=directory, check=True)
+              audio = Path(directory) / "voice.opus"
+              audio.write_bytes(b"dry-run fixture; no decoding or inference")
+              completed = subprocess.run(
+                  [command, str(audio), "--dry-run"], cwd=directory,
+                  capture_output=True, text=True, check=True,
+              )
+              if "voice.opus" not in completed.stdout:
+                  raise RuntimeError(f"Dry-run did not discover the voice note: {completed.stdout}")
+              print(completed.stdout, end="")
