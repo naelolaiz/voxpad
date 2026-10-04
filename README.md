@@ -87,6 +87,8 @@ Builds use the standard Python build frontend (`python -m build`) and produce a 
 
 GitHub Actions runs tests on Linux, Windows and both Intel and Apple Silicon macOS, builds distributions, and checks that the wheel and source archive install and expose the CLI. Download the `python-distributions` artifact from a successful workflow run. Package publishing is not configured.
 
+Security checks run in GitHub Actions as well. CodeQL analyses the Python, JavaScript and workflow code. Dependency review, pip-audit and npm audit check dependencies for known vulnerabilities, and Dependabot proposes weekly updates. zizmor checks the workflows, gitleaks scans the history for secrets, and OpenSSF Scorecard reports on the repository setup from `main`. The browser tests assert that the app contacts only its own site and the model host.
+
 ## Browser app
 
 `web/` contains a static browser app that does the same job without installing anything: drop a WhatsApp export ZIP, or a chat `.txt` with its audio files, and download the conversation with each voice message transcribed in place, as text and as JSON. It is published to GitHub Pages from `main`.
