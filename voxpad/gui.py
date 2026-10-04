@@ -82,27 +82,21 @@ def privacy_note(remote: str | None) -> str:
             f"the chat text stays on this computer. {EXPORT_HINT}")
 
 
-def saved_token() -> bool:
-    """Whether HF_TOKEN or a saved Hugging Face login provides an access token."""
-    try:
-        from huggingface_hub import get_token
-    except ImportError:
-        return False
-    return bool(get_token())
-
-
 def remote_problem(remote: str | None, *, language: str | None, model: str, token: str | None) -> str | None:
-    """Say, in the window's words, why the chosen hosted service cannot start."""
+    """Say, in the window's words, why the chosen hosted service cannot start.
+
+    Only what the window holds is checked here. Whether a token is saved, and whether
+    the service offers the model, is found out by the job, away from the window's thread.
+    """
     if not remote:
         return None
     if language and remote not in whatsapp.REMOTE_LANGUAGE_SERVICES:
         return (f"{whatsapp.REMOTE_SERVICES[remote]} cannot be told the language. "
                 f"Choose “{AUTOMATIC}”, or run on another service.")
-    if Path(model).is_dir():
-        return "A model folder cannot be used on a hosted service. Choose a Whisper size or type a Hugging Face repository name."
-    if not token and not saved_token():
-        return "Paste a Hugging Face access token that may call Inference Providers in the Token box."
-    return None
+    if whatsapp.remote_model_problem(model):
+        return ("A hosted service needs a Whisper size or a Hugging Face repository name such as "
+                "openai/whisper-large-v3-turbo as the model, not a folder or a web address.")
+    return whatsapp.token_problem(token) if token else None
 
 
 class Job(threading.Thread):
@@ -140,6 +134,8 @@ class Job(threading.Thread):
             # Show the conversation when there is one, otherwise the plain report.
             shown = summary["chat_output"] or summary["output"].with_suffix(".txt")
             self.events.put(("done", summary, shown.read_bytes().decode("utf-8")))
+        except whatsapp.RemoteTokenNeeded as error:
+            self.events.put(("failed", f"{error} You can also paste one in the Token box."))
         except (OSError, ValueError, RuntimeError, zipfile.BadZipFile, zipfile.LargeZipFile) as error:
             self.events.put(("failed", str(error)))
         except Exception as error:  # Keep the window usable and say what happened.
@@ -192,6 +188,8 @@ def create_window(source: Path | None = None):
             self.token = QtWidgets.QLineEdit(
                 echoMode=QtWidgets.QLineEdit.EchoMode.Password, enabled=False,
                 placeholderText="Hugging Face access token; leave empty to use HF_TOKEN or a saved login")
+            # An export dropped here must reach the window, not be taken for a token.
+            self.token.setAcceptDrops(False)
             self.place = QtWidgets.QComboBox()
             self.place.addItems([label for label, _ in PLACES])
             self.place.currentTextChanged.connect(self.place_changed)

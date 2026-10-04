@@ -33,6 +33,10 @@ REMOTE_SERVICES = {"deepinfra": "DeepInfra through Hugging Face", "hf-inference"
 # Of those, the services that can be told the spoken language; the others always detect it.
 REMOTE_LANGUAGE_SERVICES = {"deepinfra"}
 REMOTE_TIMEOUT_SECONDS = 120
+# A Whisper size or an owner/name repository. A URL or a path would be used as the address to upload to.
+REMOTE_MODEL = re.compile(r"[\w.-]+(/[\w.-]+)?", re.ASCII)
+# Only a token of this shape is routed through Hugging Face, and it is safe to send as a header.
+REMOTE_TOKEN = re.compile(r"hf_[\x21-\x7e]+")
 SAMPLE_RATE = 16000
 # A chunk ends at the quietest tenth of a second within its last five seconds.
 BOUNDARY_SEARCH_SECONDS = 5
@@ -224,9 +228,27 @@ class RemoteRefused(RuntimeError):
     """A hosted service turned a request down for a reason the next recording would meet too."""
 
 
+class RemoteTokenNeeded(RuntimeError):
+    """No Hugging Face access token was given, set or saved."""
+
+
 def remote_model(model: str) -> str:
     """Name a Whisper size as its Hugging Face repository; a repository is used as given."""
+    # The local runtime's short names for these sizes are not repositories.
+    model = {"turbo": "large-v3-turbo", "large": "large-v3"}.get(model, model)
     return model if "/" in model else f"openai/whisper-{model}"
+
+
+def remote_model_problem(model: str) -> bool:
+    """Whether a model is something other than a Whisper size or a repository name."""
+    return Path(model).is_dir() or not REMOTE_MODEL.fullmatch(model)
+
+
+def token_problem(token: str) -> str | None:
+    """Say what is wrong with an access token's shape, without repeating it."""
+    if REMOTE_TOKEN.fullmatch(token):
+        return None
+    return "That is not a Hugging Face access token: one starts with hf_ and has no spaces, quotes around it or line breaks."
 
 
 def remote_conflict(remote: str | None, *, model: str, language: str | None, keywords: list[str] | None,
@@ -242,8 +264,8 @@ def remote_conflict(remote: str | None, *, model: str, language: str | None, key
         return "--word-timestamps is not available with --remote"
     if language and remote not in REMOTE_LANGUAGE_SERVICES:
         return f"--language is not available with --remote {remote}; use --remote deepinfra, or let Whisper detect the language"
-    if Path(model).is_dir():
-        return "--remote needs a Whisper size or a Hugging Face repository as --model, not a folder"
+    if remote_model_problem(model):
+        return "--remote needs a Whisper size or a Hugging Face repository as --model, not a folder, path or URL"
     return None
 
 
@@ -265,19 +287,42 @@ class RemoteWhisper:
 
     def __init__(self, model: str = DEFAULT_MODEL, service: str = "deepinfra", token: str | None = None):
         try:
-            from huggingface_hub import InferenceClient, get_token
+            from huggingface_hub import HfApi, InferenceClient, get_token
         except ImportError as error:
             raise RuntimeError("Install the Python dependencies: python -m pip install -r requirements.txt") from error
+        if remote_model_problem(model):
+            raise RuntimeError("Remote transcription needs a Whisper size or a Hugging Face repository as the model.")
         # A token given here wins over HF_TOKEN and a saved login.
         token = token or get_token()
         if not token:
-            raise RuntimeError("Remote transcription needs a Hugging Face access token that may call Inference "
-                               "Providers: set HF_TOKEN or run `hf auth login`.")
+            raise RemoteTokenNeeded("Remote transcription needs a Hugging Face access token that may call Inference "
+                                    "Providers: set HF_TOKEN or run `hf auth login`.")
+        problem = token_problem(token)
+        if problem:
+            raise RuntimeError(problem)
+        self._token = token
         self.model = remote_model(model)
         self.service = REMOTE_SERVICES[service]
+        # Ask before anything is uploaded or any earlier report replaced: few Whisper sizes are hosted.
+        try:
+            offers = HfApi().model_info(self.model, expand=["inferenceProviderMapping"], token=token,
+                                        timeout=REMOTE_TIMEOUT_SECONDS).inference_provider_mapping
+        except Exception as error:  # A rejected token, an unknown repository or no connection.
+            raise RuntimeError(f"Could not ask Hugging Face who offers {self.model}: {self._reason(error)}") from error
+        if not any(offer.provider == service and offer.task == "automatic-speech-recognition" for offer in offers or []):
+            raise RuntimeError(f"{self.service} does not offer {self.model} for transcription. "
+                               f"Choose another model, such as {DEFAULT_MODEL}, or another service.")
         # Hugging Face's own service tells raw audio apart by this header; DeepInfra receives a form upload.
         headers = {"Content-Type": "audio/wav"} if service == "hf-inference" else None
         self._client = InferenceClient(provider=service, token=token, timeout=REMOTE_TIMEOUT_SECONDS, headers=headers)
+
+    def _reason(self, error: Exception) -> str:
+        """The explanation carried by an error, on one line and never with the access token."""
+        if type(error).__name__ == "RepositoryNotFoundError":
+            # The Hub answers "Invalid username or password" for a repository that does not exist as well.
+            return "there is no such repository, or the access token was not accepted"
+        reason = getattr(error, "server_message", None) or str(error) or type(error).__name__
+        return " ".join(reason.replace(self._token, "<token>").split())
 
     def transcribe(self, samples, *, language: str | None = None, keywords: list[str] | None = None,
                    word_timestamps: bool = False) -> dict:
@@ -287,12 +332,14 @@ class RemoteWhisper:
                 audio, model=self.model, extra_body={"language": language} if language else None)
         except Exception as error:  # Network, service and response failures arrive as unrelated types.
             status = getattr(getattr(error, "response", None), "status_code", None)
-            reason = getattr(error, "server_message", None) or str(error) or type(error).__name__
-            message = f"{self.service} did not transcribe the audio: {' '.join(reason.split())}"
-            # A rejected token, used-up credits or a model the service lacks fail every recording alike.
+            message = f"{self.service} did not transcribe the audio: {self._reason(error)}"
+            # A rejected token, used-up credits or an answer that cannot be read fail every recording alike.
             if isinstance(error, ValueError) or (status is not None and 400 <= status < 500 and status not in (408, 429)):
                 raise RemoteRefused(message) from error
             raise RuntimeError(message) from error
+        finally:
+            # The client otherwise keeps every uploaded chunk in memory until the run ends.
+            self._client.close()
         # The service does not say which language it heard.
         return {"text": (output.text or "").strip(), "language": language or ""}
 

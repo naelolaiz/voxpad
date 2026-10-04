@@ -75,16 +75,23 @@ class ChoiceTests(unittest.TestCase):
             self.assertNotIn("Everything runs on this computer", gui.privacy_note(service))
 
     def test_remote_choices_that_cannot_start_are_explained(self):
-        with tempfile.TemporaryDirectory() as folder, mock.patch.object(gui, "saved_token", return_value=False) as saved:
-            # Nothing is checked, and no token is looked up, when Whisper runs here.
-            self.assertIsNone(gui.remote_problem(None, language="es", model=folder, token=None))
-            saved.assert_not_called()
+        # These checks run on the window's own thread, so they never load or call the hub client.
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(sys.modules, {"huggingface_hub": None}):
+            # Nothing is checked when Whisper runs here.
+            self.assertIsNone(gui.remote_problem(None, language="es", model=folder, token="not a token"))
             self.assertIn("cannot be told the language", gui.remote_problem("hf-inference", language="es", model="tiny", token="hf_x"))
-            self.assertIn("model folder", gui.remote_problem("deepinfra", language="es", model=folder, token="hf_x"))
-            self.assertIn("Token box", gui.remote_problem("deepinfra", language="es", model="tiny", token=None))
-            self.assertIsNone(gui.remote_problem("deepinfra", language="es", model="tiny", token="hf_x"))
-            # A token from HF_TOKEN or a saved login is enough.
-            saved.return_value = True
+            # A folder, a path or a web address would be used as the place to upload to.
+            for model in (folder, "http://127.0.0.1:8000/elsewhere", "https://example.org/whisper", "some/deep/path"):
+                with self.subTest(model=model):
+                    self.assertIn("not a folder or a web address", gui.remote_problem("deepinfra", language="es", model=model, token="hf_x"))
+            # A mispasted token is refused without being repeated.
+            for token in ('"hf_quoted"', "HF_TOKEN=hf_pasted", "Bearer hf_pasted", "hf_two\nlines", "/home/ana/WhatsApp Chat.zip"):
+                with self.subTest(token=token):
+                    problem = gui.remote_problem("deepinfra", language="es", model="tiny", token=token)
+                    self.assertIn("starts with hf_", problem)
+                    self.assertNotIn(token, problem)
+            self.assertIsNone(gui.remote_problem("deepinfra", language="es", model="openai/whisper-large-v3", token="hf_x"))
+            # An empty box is left to HF_TOKEN or a saved login, which the job looks up.
             self.assertIsNone(gui.remote_problem("hf-inference", language=None, model="tiny", token=None))
 
     def test_summary_mentions_failures_and_early_stops(self):
@@ -194,7 +201,7 @@ class JobTests(unittest.TestCase):
             job.run()
         events = drain(self.events)
         local.assert_not_called()
-        self.assertEqual(service.clients[0]["token"], "hf_typed")
+        self.assertEqual((service.lookups[0]["token"], service.clients[0]["token"]), ("hf_typed", "hf_typed"))
         self.assertEqual([(call["model"], call["extra_body"]) for call in service.calls],
                          [("openai/whisper-tiny", {"language": "es"})] * 2)
         kind, summary, preview = events[-1]
@@ -205,6 +212,24 @@ class JobTests(unittest.TestCase):
         # The token is used to connect and is shown or saved nowhere.
         saved = "".join(path.read_bytes().decode("utf-8") for path in self.folder.iterdir())
         self.assertNotIn("hf_typed", repr(events) + saved)
+
+    def test_remote_job_that_cannot_start_says_why_and_writes_nothing(self):
+        cases = (
+            # No token typed, set or saved: the window has a box for one.
+            (FakeService(token=None), "tiny", ("HF_TOKEN", "Token box")),
+            (FakeService(offers=()), "tiny", ("does not offer openai/whisper-tiny",)),
+        )
+        for service, model, expected in cases:
+            with self.subTest(expected=expected):
+                job = gui.Job(self.export, self.folder, model=model, language="es", events=self.events, remote="deepinfra")
+                with mock.patch.dict(sys.modules, {"huggingface_hub": service.module()}):
+                    job.run()
+                kind, message = drain(self.events)[-1]
+                self.assertEqual(kind, "failed")
+                for text in expected:
+                    self.assertIn(text, message)
+                self.assertEqual((service.clients, service.calls), ([], []))
+                self.assertFalse(self.folder.exists())
 
 
 @unittest.skipUnless(QtWidgets is not None and codecpod is not None and np is not None,
@@ -301,6 +326,8 @@ class WindowTests(unittest.TestCase):
         self.assertFalse(window.place.isEditable())
         self.assertFalse(window.token.isEnabled())
         self.assertEqual(window.token.echoMode(), QtWidgets.QLineEdit.EchoMode.Password)
+        # An export dropped on the masked box must not be taken for a token.
+        self.assertFalse(window.token.acceptDrops())
         self.assertIn("Everything runs on this computer", window.subtitle.text())
         self.choose_service("deepinfra")
         self.assertTrue(window.token.isEnabled())
@@ -321,11 +348,16 @@ class WindowTests(unittest.TestCase):
                 mock.patch.object(whatsapp, "Whisper", local), \
                 mock.patch.object(QtWidgets.QMessageBox, "critical") as problem, \
                 mock.patch.object(QtWidgets.QMessageBox, "warning") as refusal:
-            # Without a typed or saved token nothing starts.
+            # Without a typed or saved token the job ends before anything is asked or uploaded.
             window.start_button.click()
+            self.finish()
             self.assertIn("Token box", problem.call_args.args[2])
+            # A mispasted token is turned down in the window, without starting a job.
+            window.token.setText("HF_TOKEN=hf_typed")
+            window.start_button.click()
+            self.assertIn("starts with hf_", problem.call_args.args[2])
             self.assertIsNone(window.job)
-            self.assertEqual(service.clients, [])
+            self.assertEqual((service.lookups, service.clients), ([], []))
             window.token.setText(" hf_typed ")
             window.start_button.click()
             self.assertFalse(window.place.isEnabled())
