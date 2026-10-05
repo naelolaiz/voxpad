@@ -217,7 +217,7 @@ test("annotated log keeps line separators and form feeds inside messages", () =>
   const index = indexMessages([entry("chat.txt", text), entry("first.opus"), entry("second.opus")]);
   // Neither character ends a line, so each transcript follows its whole message.
   assert.equal(annotatedChat(index.chats[0], { "first.opus": { status: "ok", text: "uno" }, "second.opus": { status: "ok", text: "dos" } }),
-    `${text.replace("\n", "\n[Voice message transcript: uno]\n")}\n[Voice message transcript: dos]\n`);
+    `${text.replace(/\n/g, "\n[Voice message transcript: uno]\n")}\n[Voice message transcript: dos]\n`);
 });
 
 test("annotated log replaces the transcripts a message already ends with", () => {
