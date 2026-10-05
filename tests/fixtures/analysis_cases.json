@@ -1,0 +1,1298 @@
+{
+  "phrases": {
+    "deleted": [
+      "this message was deleted", "you deleted this message", "se eliminó este mensaje", "eliminaste este mensaje",
+      "diese nachricht wurde gelöscht", "du hast diese nachricht gelöscht", "mensagem apagada", "esta mensagem foi apagada",
+      "você apagou esta mensagem", "apagou esta mensagem", "ce message a été supprimé", "vous avez supprimé ce message",
+      "questo messaggio è stato eliminato", "hai eliminato questo messaggio"
+    ],
+    "edited": [
+      "this message was edited", "se editó este mensaje", "diese nachricht wurde bearbeitet", "mensagem editada",
+      "ce message a été modifié", "questo messaggio è stato modificato"
+    ],
+    "known_omitted": ["<media omitted>", "<multimedia omitido>"],
+    "omitted_nouns": [
+      "image", "imagen", "immagine", "bild", "audio", "áudio", "video", "vídeo", "vidéo", "sticker", "gif", "document", "documento",
+      "dokument", "contact", "tarjeta"
+    ],
+    "omitted_suffixes": ["omitted", "omitido", "omitida", "weggelassen", "omis", "omise", "omesso", "omessa"]
+  },
+  "timestamps": [
+    {"raw": "18/01/26, 21:45", "order": "DMY", "forced": false, "time": "2026-01-18T21:45:00"},
+    {"raw": "18/01/26, 21:45", "order": "MDY", "forced": false, "time": null},
+    {"raw": "18/01/26, 21:45", "order": "YMD", "forced": false, "time": null},
+    {"raw": "18/01/26, 21:45", "order": "YMD", "forced": true, "time": "2018-01-26T21:45:00"},
+    {"raw": "1/18/26, 9:45 PM", "order": "MDY", "forced": false, "time": "2026-01-18T21:45:00"},
+    {"raw": "1/18/26, 9:45 PM", "order": "DMY", "forced": false, "time": null},
+    {"raw": "1/18/26, 9:45:07\u202fPM", "order": "MDY", "forced": false, "time": "2026-01-18T21:45:07"},
+    {"raw": "[1/18/26, 9:45 PM]", "order": "MDY", "forced": false, "time": null},
+    {"raw": "1/18/26, 12:00 AM", "order": "MDY", "forced": false, "time": "2026-01-18T00:00:00"},
+    {"raw": "1/18/26, 12:00 PM", "order": "MDY", "forced": false, "time": "2026-01-18T12:00:00"},
+    {"raw": "1/18/26, 12:59:59 a. m.", "order": "MDY", "forced": false, "time": "2026-01-18T00:59:59"},
+    {"raw": "2026-10-4, 9:10 p. m.", "order": "YMD", "forced": false, "time": "2026-10-04T21:10:00"},
+    {"raw": "2026/10/4, 上午9:10", "order": "YMD", "forced": false, "time": "2026-10-04T09:10:00"},
+    {"raw": "2026/10/4, 下午9:10", "order": "YMD", "forced": false, "time": "2026-10-04T21:10:00"},
+    {"raw": "2026/10/4, 下午12:10", "order": "YMD", "forced": false, "time": "2026-10-04T12:10:00"},
+    {"raw": "2026/10/4, 午前12:10", "order": "YMD", "forced": false, "time": "2026-10-04T00:10:00"},
+    {"raw": "2026/10/4, 9:10 午後", "order": "YMD", "forced": false, "time": "2026-10-04T21:10:00"},
+    {"raw": "\u0664/\u0661\u0660/\u0662\u0660\u0662\u0666\u060c \u0669:\u0661\u0660 \u0645", "order": "DMY", "forced": false, "time": "2026-10-04T21:10:00"},
+    {"raw": "\u0664/\u0661\u0660/\u0662\u0660\u0662\u0666\u060c \u0669:\u0661\u0660 \u0635", "order": "DMY", "forced": false, "time": "2026-10-04T09:10:00"},
+    {"raw": "\u0664/\u0661\u0660/\u0662\u0660\u0662\u0666\u060c \u0669:\u0661\u0660 \u0645", "order": "MDY", "forced": false, "time": "2026-04-10T21:10:00"},
+    {"raw": "04.10.2026, 09\uff1a10", "order": "DMY", "forced": false, "time": "2026-10-04T09:10:00"},
+    {"raw": "\uff10\uff14/\uff11\uff10/\uff12\uff10\uff12\uff16, \uff10\uff19:\uff11\uff10", "order": "DMY", "forced": false, "time": "2026-10-04T09:10:00"},
+    {"raw": "\u096a/\u0967\u0966/\u0968\u0966\u0968\u096c, \u096f:\u0967\u0966", "order": "DMY", "forced": false, "time": "2026-10-04T09:10:00"},
+    {"raw": "\u06f4/\u06f1\u06f0/\u06f2\u06f0\u06f2\u06f6\u060c \u06f9:\u06f1\u06f0", "order": "DMY", "forced": false, "time": "2026-10-04T09:10:00"},
+    {"raw": "1\u0668/01/26, 21:45", "order": "DMY", "forced": false, "time": "2026-01-18T21:45:00"},
+    {"raw": "\ud835\udfcf\ud835\udfd6/01/26, 21:45", "order": "DMY", "forced": false, "time": null},
+    {"raw": "31/04/26, 10:00", "order": "DMY", "forced": false, "time": null},
+    {"raw": "29/02/24, 10:00", "order": "DMY", "forced": false, "time": "2024-02-29T10:00:00"},
+    {"raw": "29/02/25, 10:00", "order": "DMY", "forced": false, "time": null},
+    {"raw": "29/02/1900, 10:00", "order": "DMY", "forced": false, "time": null},
+    {"raw": "29/02/2000, 10:00", "order": "DMY", "forced": false, "time": "2000-02-29T10:00:00"},
+    {"raw": "0/1/26, 10:00", "order": "DMY", "forced": false, "time": null},
+    {"raw": "1/0/26, 10:00", "order": "DMY", "forced": false, "time": null},
+    {"raw": "01/01/0000, 10:00", "order": "DMY", "forced": false, "time": null},
+    {"raw": "01/01/0001, 10:00", "order": "DMY", "forced": false, "time": "0001-01-01T10:00:00"},
+    {"raw": "31/12/9999, 23:59:59", "order": "DMY", "forced": false, "time": "9999-12-31T23:59:59"},
+    {"raw": "1/2/026, 10:00", "order": "DMY", "forced": false, "time": null},
+    {"raw": "1/2/6, 10:00", "order": "DMY", "forced": false, "time": null},
+    {"raw": "001/2/26, 10:00", "order": "DMY", "forced": false, "time": null},
+    {"raw": "26/1/5, 9:10", "order": "DMY", "forced": true, "time": null},
+    {"raw": "2026/1/5, 9:10", "order": "YMD", "forced": false, "time": "2026-01-05T09:10:00"},
+    {"raw": "2026/1/5, 9:10", "order": "DMY", "forced": false, "time": null},
+    {"raw": "2026/1/5, 9:10", "order": "MDY", "forced": false, "time": null},
+    {"raw": "2026/02/30, 9:10", "order": "YMD", "forced": false, "time": null},
+    {"raw": "026/1/5, 9:10", "order": "YMD", "forced": true, "time": null},
+    {"raw": "6/1/5, 9:10", "order": "YMD", "forced": true, "time": "2006-01-05T09:10:00"},
+    {"raw": "6/1/5, 9:10", "order": "YMD", "forced": false, "time": null},
+    {"raw": "18/01/26, 24:00", "order": "DMY", "forced": false, "time": null},
+    {"raw": "18/01/26, 23:60", "order": "DMY", "forced": false, "time": null},
+    {"raw": "18/01/26, 23:59:60", "order": "DMY", "forced": false, "time": null},
+    {"raw": "18/01/26, 13:05 PM", "order": "DMY", "forced": false, "time": "2026-01-18T13:05:00"},
+    {"raw": "18/01/26, 0:30 AM", "order": "DMY", "forced": false, "time": "2026-01-18T00:30:00"},
+    {"raw": "18/01/26, 15:00 AM", "order": "DMY", "forced": false, "time": "2026-01-18T03:00:00"},
+    {"raw": "18/01/26, 7:05", "order": "DMY", "forced": false, "time": "2026-01-18T07:05:00"},
+    {"raw": "18/01/26, AM 9:10 PM", "order": "DMY", "forced": false, "time": "2026-01-18T21:10:00"},
+    {"raw": "18/01/26, PM 9:10 AM", "order": "DMY", "forced": false, "time": "2026-01-18T09:10:00"},
+    {"raw": "18/01/26, pm 9:10", "order": "DMY", "forced": false, "time": "2026-01-18T21:10:00"},
+    {"raw": "18/01/26, 9:10 P.M.", "order": "DMY", "forced": false, "time": "2026-01-18T21:10:00"},
+    {"raw": "18/01/26\u060c21:45", "order": "DMY", "forced": false, "time": "2026-01-18T21:45:00"},
+    {"raw": "18-01-2026 21:45", "order": "DMY", "forced": false, "time": "2026-01-18T21:45:00"},
+    {"raw": "18/01/26, 21:45 ", "order": "DMY", "forced": false, "time": null},
+    {"raw": "18/01/26", "order": "DMY", "forced": false, "time": null},
+    {"raw": "hello", "order": "DMY", "forced": false, "time": null},
+    {"raw": "", "order": "DMY", "forced": false, "time": null}
+  ],
+  "date_orders": [
+    {"timestamps": [], "hints": null, "order": "DMY", "ambiguous": false},
+    {"timestamps": ["3/4/24, 9:10 PM"], "hints": null, "order": "DMY", "ambiguous": true},
+    {"timestamps": ["3/4/24, 9:10 PM"], "hints": ["2024-03-04"], "order": "MDY", "ambiguous": false},
+    {"timestamps": ["3/4/24, 9:10 PM"], "hints": ["2024-04-03"], "order": "DMY", "ambiguous": false},
+    {"timestamps": ["3/4/24, 9:10 PM"], "hints": ["2024-05-05"], "order": "DMY", "ambiguous": true},
+    {"timestamps": ["3/4/24, 23:00", "3/4/24, 01:00"], "hints": null, "order": "DMY", "ambiguous": true},
+    {"timestamps": ["1/2/24, 10:00", "1/3/24, 10:00"], "hints": null, "order": "MDY", "ambiguous": true},
+    {"timestamps": ["01.02.24, 10:00", "01.03.24, 10:00"], "hints": null, "order": "DMY", "ambiguous": false},
+    {"timestamps": ["01-02-2024 10:00", "01-03-2024 10:00"], "hints": null, "order": "DMY", "ambiguous": false},
+    {"timestamps": ["12.13.24, 10:00"], "hints": null, "order": "MDY", "ambiguous": false},
+    {"timestamps": ["05/04/24, 10:00", "13/04/24, 10:00"], "hints": null, "order": "DMY", "ambiguous": false},
+    {"timestamps": ["5/6/24, 10:00", "6/5/24, 10:00"], "hints": null, "order": "MDY", "ambiguous": false},
+    {"timestamps": ["5/5/24, 10:00", "6/6/24, 10:00"], "hints": null, "order": "DMY", "ambiguous": false},
+    {"timestamps": ["1/1/24, 10:00", "1/3/24, 10:00", "2/2/24, 10:00"], "hints": null, "order": "MDY", "ambiguous": false},
+    {"timestamps": ["2026/10/4, 9:10", "2026/10/5, 9:10"], "hints": null, "order": "YMD", "ambiguous": false},
+    {"timestamps": ["05/04/24, 10:00", "2024/04/13, 10:00", "14/04/24, 10:00"], "hints": null, "order": "DMY", "ambiguous": false},
+    {"timestamps": ["26/01/05, 10:00", "26/01/06, 10:00"], "hints": null, "order": "DMY", "ambiguous": false},
+    {"timestamps": ["1/3/24, 10:00", "2/3/24, 10:00", "5/2/24, 10:00", "6/2/24, 10:00"], "hints": ["2024-03-01", null, null, null], "order": "DMY", "ambiguous": false},
+    {"timestamps": ["1/5/24, 10:00", "1/6/24, 10:00", "13/04/24, 10:00", "1/7/24, 10:00", "1/9/24, 10:00"], "hints": null, "order": "DMY", "ambiguous": false},
+    {"timestamps": ["\u0664/\u0661\u0660/\u0662\u0660\u0662\u0666\u060c \u0669:\u0661\u0660 \u0645", "\u0661\u0663/\u0661\u0660/\u0662\u0660\u0662\u0666\u060c \u0669:\u0661\u0661 \u0645"], "hints": null, "order": "DMY", "ambiguous": false},
+    {"timestamps": ["99/99/99, 10:00"], "hints": null, "order": "DMY", "ambiguous": false},
+    {"timestamps": ["hello", ""], "hints": null, "order": "DMY", "ambiguous": false}
+  ],
+  "filename_dates": [
+    {"name": "IMG-20240304-WA0001.jpg", "date": "2024-03-04"},
+    {"name": "00000012-AUDIO-2024-03-04-10-00-00.opus", "date": "2024-03-04"},
+    {"name": "IMG_20240304_101500.jpg", "date": "2024-03-04"},
+    {"name": "VID_20240304101500.mp4", "date": null},
+    {"name": "2024-03-04.pdf", "date": "2024-03-04"},
+    {"name": "20240304.pdf", "date": "2024-03-04"},
+    {"name": "scan 2024-0304.pdf", "date": null},
+    {"name": "scan 202403-04.pdf", "date": null},
+    {"name": "12024-03-04.pdf", "date": null},
+    {"name": "2024-03-045.pdf", "date": null},
+    {"name": "PTT-20081231-WA0001.opus", "date": null},
+    {"name": "PTT-20090101-WA0001.opus", "date": "2009-01-01"},
+    {"name": "PTT-20991231-WA0001.opus", "date": "2099-12-31"},
+    {"name": "PTT-21000101-WA0001.opus", "date": null},
+    {"name": "IMG-20241304-WA0001.jpg", "date": null},
+    {"name": "IMG-20240230-WA0001.jpg", "date": null},
+    {"name": "IMG-20240229-WA0001.jpg", "date": "2024-02-29"},
+    {"name": "IMG-20250229-WA0001.jpg", "date": null},
+    {"name": "20240230-backup-20240301.zip", "date": "2024-03-01"},
+    {"name": "Informe final.pdf", "date": null}
+  ],
+  "words": [
+    {"text": "", "count": 0},
+    {"text": "   ", "count": 0},
+    {"text": "one", "count": 1},
+    {"text": " leading and trailing ", "count": 3},
+    {"text": "tabs\tand\nnew lines\r\nmixed", "count": 5},
+    {"text": "héllo wörld", "count": 2},
+    {"text": "emoji \ud83d\ude00 counts", "count": 3},
+    {"text": "中文 没有 空格", "count": 3},
+    {"text": "中文没有空格", "count": 1},
+    {"text": "don't-stop, now!", "count": 2},
+    {"text": "1,234.5", "count": 1},
+    {"text": "a\tb", "count": 2},
+    {"text": "a\nb", "count": 2},
+    {"text": "a\u000bb", "count": 2},
+    {"text": "a\u000cb", "count": 2},
+    {"text": "a\rb", "count": 2},
+    {"text": "a\u001cb", "count": 2},
+    {"text": "a\u001db", "count": 2},
+    {"text": "a\u001eb", "count": 2},
+    {"text": "a\u001fb", "count": 2},
+    {"text": "a b", "count": 2},
+    {"text": "a\u0085b", "count": 2},
+    {"text": "a\u00a0b", "count": 2},
+    {"text": "a\u1680b", "count": 2},
+    {"text": "a\u2000b", "count": 2},
+    {"text": "a\u2001b", "count": 2},
+    {"text": "a\u2002b", "count": 2},
+    {"text": "a\u2003b", "count": 2},
+    {"text": "a\u2004b", "count": 2},
+    {"text": "a\u2005b", "count": 2},
+    {"text": "a\u2006b", "count": 2},
+    {"text": "a\u2007b", "count": 2},
+    {"text": "a\u2008b", "count": 2},
+    {"text": "a\u2009b", "count": 2},
+    {"text": "a\u200ab", "count": 2},
+    {"text": "a\u2028b", "count": 2},
+    {"text": "a\u2029b", "count": 2},
+    {"text": "a\u202fb", "count": 2},
+    {"text": "a\u205fb", "count": 2},
+    {"text": "a\u3000b", "count": 2},
+    {"text": "a\ufeffb", "count": 2},
+    {"text": "\ufeff", "count": 0},
+    {"text": "\u001c\u001d\u001e\u001f\u0085", "count": 0},
+    {"text": "\u2028\u2029", "count": 0},
+    {"text": "a\u000eb", "count": 1},
+    {"text": "a\u001bb", "count": 1},
+    {"text": "a\u007fb", "count": 1},
+    {"text": "a\u0084b", "count": 1},
+    {"text": "a\u0086b", "count": 1},
+    {"text": "a\u00adb", "count": 1},
+    {"text": "a\u180eb", "count": 1},
+    {"text": "a\u200bb", "count": 1},
+    {"text": "a\u200db", "count": 1},
+    {"text": "a\u2060b", "count": 1},
+    {"text": "a\u2800b", "count": 1}
+  ],
+  "events": [
+    {
+      "text": "# comment\n2024-01-15, First date\n14/02/2024 | Valentine's day\n01.03.24   Moved to Berlin\n\nnot a date\n2024-02-30 impossible\n13/01/2024\tTab label\n01/13/2024 month first\n2023-12-31\n",
+      "events": [
+        {"date": "2023-12-31", "label": "2023-12-31"},
+        {"date": "2024-01-13", "label": "Tab label"},
+        {"date": "2024-01-13", "label": "month first"},
+        {"date": "2024-01-15", "label": "First date"},
+        {"date": "2024-02-14", "label": "Valentine's day"},
+        {"date": "2024-03-01", "label": "Moved to Berlin"}
+      ],
+      "warnings": ["Events line 6 has no valid date and was skipped.", "Events line 7 has no valid date and was skipped."]
+    },
+    {
+      "text": "\ufeff2024-05-01, uno\r\n   2024/05/02|dos\r# no\r2024.05.03\tthree  \n",
+      "events": [
+        {"date": "2024-05-01", "label": "uno"},
+        {"date": "2024-05-02", "label": "dos"},
+        {"date": "2024-05-03", "label": "three"}
+      ],
+      "warnings": []
+    },
+    {
+      "text": "2024-06-01 a\u2028b\n2024-06-02 x\u000cy\n2024-06-03\u00a0no-break space\n",
+      "events": [
+        {"date": "2024-06-01", "label": "a\u2028b"},
+        {"date": "2024-06-02", "label": "x\u000cy"},
+        {"date": "2024-06-03", "label": "no-break space"}
+      ],
+      "warnings": []
+    },
+    {
+      "text": "1/2/5 one digit year\n1/2/024 three digit year\n1/2/2024\n24-01-15 short year first reads day-first\n2024-07-01 , | \n2024-07-02,,x\n2024-07-03 - dash stays\n\u0662\u0660\u0662\u0664-\u0660\u0661-\u0661\u0665 arabic digits\non 2024-01-15 text first\n   # indented comment\n2024-1-5 short fields\n123/1/2024 too long\n31/11/2024 no such day\n2024-01-150 day too long\n2024-08-01\t|\tTab and bar\n",
+      "events": [
+        {"date": "0024-02-01", "label": "three digit year"},
+        {"date": "2005-02-01", "label": "one digit year"},
+        {"date": "2015-01-24", "label": "short year first reads day-first"},
+        {"date": "2024-01-05", "label": "short fields"},
+        {"date": "2024-02-01", "label": "2024-02-01"},
+        {"date": "2024-07-01", "label": "2024-07-01"},
+        {"date": "2024-07-02", "label": "x"},
+        {"date": "2024-07-03", "label": "- dash stays"},
+        {"date": "2024-08-01", "label": "Tab and bar"}
+      ],
+      "warnings": [
+        "Events line 8 has no valid date and was skipped.",
+        "Events line 9 has no valid date and was skipped.",
+        "Events line 12 has no valid date and was skipped.",
+        "Events line 13 has no valid date and was skipped.",
+        "Events line 14 has no valid date and was skipped."
+      ]
+    },
+    {"text": "", "events": [], "warnings": []}
+  ],
+  "cases": [
+    {
+      "name": "android day-first: caption, edited, deleted, omitted media",
+      "chat": "05/04/24, 09:00 - Messages and calls are end-to-end encrypted.\n05/04/24, 09:01 - Ana: Hola José\n05/04/24, 09:02 - José: IMG-20240405-WA0001.jpg (file attached)\nmira esto\n13/04/24, 21:15 - Ana: <Media omitted>\n13/04/24, 21:16 - José: This message was deleted\n13/04/24, 21:17 - Ana: ya voy <This message was edited>\n13/04/24, 21:18 - José: alle 20.30 (se va bene)\n13/04/24, 21:19 - Ana: otra <This message was edited>\n\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "DMY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2024-04-05T09:00:00", "sender": null, "kind": "system", "text": "Messages and calls are end-to-end encrypted.", "words": 0},
+          {"time": "2024-04-05T09:01:00", "sender": 0, "kind": "text", "text": "Hola José", "words": 2},
+          {"time": "2024-04-05T09:02:00", "sender": 1, "kind": "media", "text": "mira esto", "words": 2, "media": {"type": "image", "file": "IMG-20240405-WA0001.jpg"}},
+          {"time": "2024-04-13T21:15:00", "sender": 0, "kind": "media", "text": "", "words": 0, "media": {"type": "omitted", "file": null}},
+          {"time": "2024-04-13T21:16:00", "sender": 1, "kind": "deleted", "text": "", "words": 0},
+          {"time": "2024-04-13T21:17:00", "sender": 0, "kind": "text", "text": "ya voy", "words": 2, "edited": true},
+          {"time": "2024-04-13T21:18:00", "sender": 1, "kind": "text", "text": "alle 20.30 (se va bene)", "words": 5},
+          {"time": "2024-04-13T21:19:00", "sender": 0, "kind": "text", "text": "otra <This message was edited>", "words": 5}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2024-04-05", "2024-04-06", "2024-04-07", "2024-04-08", "2024-04-09", "2024-04-10", "2024-04-11", "2024-04-12", "2024-04-13"],
+          "series": [
+            {"messages": [1, 0, 0, 0, 0, 0, 0, 0, 3], "words_typed": [2, 0, 0, 0, 0, 0, 0, 0, 7], "words_spoken": [0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_notes": [0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_seconds": [0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_transcribed": [0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_timed": [0, 0, 0, 0, 0, 0, 0, 0, 0]},
+            {"messages": [1, 0, 0, 0, 0, 0, 0, 0, 2], "words_typed": [2, 0, 0, 0, 0, 0, 0, 0, 5], "words_spoken": [0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_notes": [0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_seconds": [0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_transcribed": [0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_timed": [0, 0, 0, 0, 0, 0, 0, 0, 0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2024-04-01", "2024-04-08"],
+          "series": [
+            {"messages": [1, 3], "words_typed": [2, 7], "words_spoken": [0, 0], "voice_notes": [0, 0], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]},
+            {"messages": [1, 2], "words_typed": [2, 5], "words_spoken": [0, 0], "voice_notes": [0, 0], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2024-04-01"],
+          "series": [
+            {"messages": [4], "words_typed": [9], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [3], "words_typed": [7], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 4, "words_typed": 9, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 3, "words_typed": 7, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "ios month-first: 12-hour markers, attachments, bare omitted media",
+      "chat": "[1/18/26, 11:59:30\u202fPM] Ana: Good night\n[1/19/26, 12:00:05\u202fAM] José: \u200e<attached: 00000012-AUDIO-2026-01-19-00-00-05.opus>\n[1/19/26, 12:30:00\u202fPM] Ana: \u200e<attached: 00000013-PHOTO-2026-01-19-12-30-00.jpg> lunch\n[1/19/26, 9:45:00\u202fPM] José: \u200eimage omitted\n[1/19/26, 9:46:00\u202fPM] José: \u200eaudio omitted\n[1/19/26, 9:47:00\u202fPM] Ana: I paid 12.50 (too much)\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "MDY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2026-01-18T23:59:30", "sender": 0, "kind": "text", "text": "Good night", "words": 2},
+          {"time": "2026-01-19T00:00:05", "sender": 1, "kind": "voice", "text": "", "words": 0, "voice": {"file": "00000012-AUDIO-2026-01-19-00-00-05.opus", "src": null, "seconds": null, "status": "pending", "text": "", "words": 0}},
+          {"time": "2026-01-19T12:30:00", "sender": 0, "kind": "media", "text": "lunch", "words": 1, "media": {"type": "image", "file": "00000013-PHOTO-2026-01-19-12-30-00.jpg"}},
+          {"time": "2026-01-19T21:45:00", "sender": 1, "kind": "media", "text": "", "words": 0, "media": {"type": "omitted", "file": null}},
+          {"time": "2026-01-19T21:46:00", "sender": 1, "kind": "voice", "text": "", "words": 0, "voice": {"file": null, "src": null, "seconds": null, "status": "missing", "text": "", "words": 0}},
+          {"time": "2026-01-19T21:47:00", "sender": 0, "kind": "text", "text": "I paid 12.50 (too much)", "words": 5}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2026-01-18", "2026-01-19"],
+          "series": [
+            {"messages": [1, 2], "words_typed": [2, 6], "words_spoken": [0, 0], "voice_notes": [0, 0], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]},
+            {"messages": [0, 3], "words_typed": [0, 0], "words_spoken": [0, 0], "voice_notes": [0, 2], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2026-01-12", "2026-01-19"],
+          "series": [
+            {"messages": [1, 2], "words_typed": [2, 6], "words_spoken": [0, 0], "voice_notes": [0, 0], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]},
+            {"messages": [0, 3], "words_typed": [0, 0], "words_spoken": [0, 0], "voice_notes": [0, 2], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2026-01-01"],
+          "series": [
+            {"messages": [3], "words_typed": [8], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [3], "words_typed": [0], "words_spoken": [0], "voice_notes": [2], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 3, "words_typed": 8, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 3, "words_typed": 0, "words_spoken": 0, "voice_notes": 2, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "year-first with Chinese markers and a fullwidth colon",
+      "chat": "[2026/1/5 上午9:10:00] Li: 早上好\n[2026/1/5 下午12:05:00] Ana: hello Li\n[2026/1/5 下午9:10:00] Li: <附件\uff1a00000021-PHOTO-2026-01-05-21-10-00.jpg>\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Li · Ana",
+        "date_order": "YMD",
+        "date_order_ambiguous": false,
+        "participants": ["Li", "Ana"],
+        "messages": [
+          {"time": "2026-01-05T09:10:00", "sender": 0, "kind": "text", "text": "早上好", "words": 1},
+          {"time": "2026-01-05T12:05:00", "sender": 1, "kind": "text", "text": "hello Li", "words": 2},
+          {"time": "2026-01-05T21:10:00", "sender": 0, "kind": "media", "text": "", "words": 0, "media": {"type": "image", "file": "00000021-PHOTO-2026-01-05-21-10-00.jpg"}}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2026-01-05"],
+          "series": [
+            {"messages": [2], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [2], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2026-01-05"],
+          "series": [
+            {"messages": [2], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [2], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2026-01-01"],
+          "series": [
+            {"messages": [2], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [2], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 2, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 1, "words_typed": 2, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "arabic digits and markers, a duration without a transcript",
+      "chat": "[\u0664/\u0661\u0660/\u0662\u0660\u0662\u0666\u060c \u0669:\u0661\u0660 \u0635] Ana: \u0635\u0628\u0627\u062d \u0627\u0644\u062e\u064a\u0631\n[\u0664/\u0661\u0660/\u0662\u0660\u0662\u0666\u060c \u0661\u0662:\u0663\u0660 \u0645] José: hola\n[\u0661\u0663/\u0661\u0660/\u0662\u0660\u0662\u0666\u060c \u0661\u0661:\u0660\u0665 \u0645] Ana: \u200f<\u0627\u0644\u0645\u0631\u0641\u0642: 00000031-AUDIO-2026-10-13-23-05-00.opus>\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": {"00000031-AUDIO-2026-10-13-23-05-00.opus": 12.5},
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "DMY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2026-10-04T09:10:00", "sender": 0, "kind": "text", "text": "\u0635\u0628\u0627\u062d \u0627\u0644\u062e\u064a\u0631", "words": 2},
+          {"time": "2026-10-04T12:30:00", "sender": 1, "kind": "text", "text": "hola", "words": 1},
+          {"time": "2026-10-13T23:05:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "00000031-AUDIO-2026-10-13-23-05-00.opus", "src": null, "seconds": 12.5, "status": "pending", "text": "", "words": 0}}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2026-10-04", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10", "2026-10-11", "2026-10-12", "2026-10-13"],
+          "series": [
+            {"messages": [1, 0, 0, 0, 0, 0, 0, 0, 0, 1], "words_typed": [2, 0, 0, 0, 0, 0, 0, 0, 0, 0], "words_spoken": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_notes": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1], "voice_seconds": [0, 0, 0, 0, 0, 0, 0, 0, 0, 12.5], "voice_transcribed": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_timed": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]},
+            {"messages": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0], "words_typed": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0], "words_spoken": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_notes": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_seconds": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_transcribed": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "voice_timed": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2026-09-28", "2026-10-05", "2026-10-12"],
+          "series": [
+            {"messages": [1, 0, 1], "words_typed": [2, 0, 0], "words_spoken": [0, 0, 0], "voice_notes": [0, 0, 1], "voice_seconds": [0, 0, 12.5], "voice_transcribed": [0, 0, 0], "voice_timed": [0, 0, 1]},
+            {"messages": [1, 0, 0], "words_typed": [1, 0, 0], "words_spoken": [0, 0, 0], "voice_notes": [0, 0, 0], "voice_seconds": [0, 0, 0], "voice_transcribed": [0, 0, 0], "voice_timed": [0, 0, 0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2026-10-01"],
+          "series": [
+            {"messages": [2], "words_typed": [2], "words_spoken": [0], "voice_notes": [1], "voice_seconds": [12.5], "voice_transcribed": [0], "voice_timed": [1]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 2, "words_typed": 2, "words_spoken": 0, "voice_notes": 1, "voice_seconds": 12.5, "voice_transcribed": 0, "voice_timed": 1},
+        {"messages": 1, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "dotted German chat",
+      "chat": "01.02.26, 21:45 - Ana: Hallo\n01.02.26, 21:46 - José: Diese Nachricht wurde gelöscht\n02.02.26, 08:00 - Ana: Bild weggelassen\n03.02.26, 08:05 - José: <Medien ausgeschlossen>\n03.02.26, 08:06 - Ana: <Medien ausgeschlossen>\n03.02.26, 08:07 - José: Du hast diese Nachricht gelöscht.\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "DMY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2026-02-01T21:45:00", "sender": 0, "kind": "text", "text": "Hallo", "words": 1},
+          {"time": "2026-02-01T21:46:00", "sender": 1, "kind": "deleted", "text": "", "words": 0},
+          {"time": "2026-02-02T08:00:00", "sender": 0, "kind": "media", "text": "", "words": 0, "media": {"type": "omitted", "file": null}},
+          {"time": "2026-02-03T08:05:00", "sender": 1, "kind": "media", "text": "", "words": 0, "media": {"type": "omitted", "file": null}},
+          {"time": "2026-02-03T08:06:00", "sender": 0, "kind": "media", "text": "", "words": 0, "media": {"type": "omitted", "file": null}},
+          {"time": "2026-02-03T08:07:00", "sender": 1, "kind": "deleted", "text": "", "words": 0}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2026-02-01", "2026-02-02", "2026-02-03"],
+          "series": [
+            {"messages": [1, 1, 1], "words_typed": [1, 0, 0], "words_spoken": [0, 0, 0], "voice_notes": [0, 0, 0], "voice_seconds": [0, 0, 0], "voice_transcribed": [0, 0, 0], "voice_timed": [0, 0, 0]},
+            {"messages": [1, 0, 2], "words_typed": [0, 0, 0], "words_spoken": [0, 0, 0], "voice_notes": [0, 0, 0], "voice_seconds": [0, 0, 0], "voice_transcribed": [0, 0, 0], "voice_timed": [0, 0, 0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2026-01-26", "2026-02-02"],
+          "series": [
+            {"messages": [1, 2], "words_typed": [1, 0], "words_spoken": [0, 0], "voice_notes": [0, 0], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]},
+            {"messages": [1, 2], "words_typed": [0, 0], "words_spoken": [0, 0], "voice_notes": [0, 0], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2026-02-01"],
+          "series": [
+            {"messages": [3], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [3], "words_typed": [0], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 3, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 3, "words_typed": 0, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "ambiguous date order",
+      "chat": "3/4/24, 9:10 PM - Ana: one\n3/4/24, 9:11 PM - José: two\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "DMY",
+        "date_order_ambiguous": true,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2024-04-03T21:10:00", "sender": 0, "kind": "text", "text": "one", "words": 1},
+          {"time": "2024-04-03T21:11:00", "sender": 1, "kind": "text", "text": "two", "words": 1}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2024-04-03"],
+          "series": [
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2024-04-01"],
+          "series": [
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2024-04-01"],
+          "series": [
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 1, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 1, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "a filename hint decides the date order",
+      "chat": "3/4/24, 9:10 PM - Ana: one\n3/4/24, 9:11 PM - José: IMG-20240304-WA0001.jpg (file attached)\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "MDY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2024-03-04T21:10:00", "sender": 0, "kind": "text", "text": "one", "words": 1},
+          {"time": "2024-03-04T21:11:00", "sender": 1, "kind": "media", "text": "", "words": 0, "media": {"type": "image", "file": "IMG-20240304-WA0001.jpg"}}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2024-03-04"],
+          "series": [
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [0], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2024-03-04"],
+          "series": [
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [0], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2024-03-01"],
+          "series": [
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [0], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 1, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 1, "words_typed": 0, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "every whitespace character and the line-separator case",
+      "chat": "01/10/26, 10:00 - Ana: one\u2028two\n01/10/26, 10:01 - Bob: x\u000cy\n01/10/26, 10:02 - Ana: a\tb\u000bc\u000cd\u001ce\u001df\u001eg\u001fh i\u0085j\u00a0k\u1680l\u2000m\u2001n\u2002o\u2003p\u2004q\u2005r\u2006s\u2007t\u2008u\u2009v\u200aw\u2028x\u2029y\u202fz\u205fA\u3000B\ufeffC\rD\r\nE\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · Bob",
+        "date_order": "DMY",
+        "date_order_ambiguous": true,
+        "participants": ["Ana", "Bob"],
+        "messages": [
+          {"time": "2026-10-01T10:00:00", "sender": 0, "kind": "text", "text": "one\u2028two", "words": 2},
+          {"time": "2026-10-01T10:01:00", "sender": 1, "kind": "text", "text": "x\u000cy", "words": 2},
+          {"time": "2026-10-01T10:02:00", "sender": 0, "kind": "text", "text": "a\tb\u000bc\u000cd\u001ce\u001df\u001eg\u001fh i\u0085j\u00a0k\u1680l\u2000m\u2001n\u2002o\u2003p\u2004q\u2005r\u2006s\u2007t\u2008u\u2009v\u200aw\u2028x\u2029y\u202fz\u205fA\u3000BC\nD\nE", "words": 30}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2026-10-01"],
+          "series": [
+            {"messages": [2], "words_typed": [32], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [2], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2026-09-28"],
+          "series": [
+            {"messages": [2], "words_typed": [32], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [2], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2026-10-01"],
+          "series": [
+            {"messages": [2], "words_typed": [32], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [2], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 2, "words_typed": 32, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 1, "words_typed": 2, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "annotated chat without results (CRLF)",
+      "chat": "10/01/26, 08:00 - Ana: PTT-20260110-WA0001.opus (file attached)\r\n[Voice message transcript: Hola José, cómo estás]\r\n[Voice message transcript: otra copia]\r\n10/01/26, 08:05 - José: PTT-20260110-WA0002.opus (file attached)\r\n[Voice message transcript: No speech detected]\r\n10/01/26, 08:06 - José: PTT-20260110-WA0003.opus (file attached)\r\n[Voice message transcript: Error: Could not decode audio]\r\n10/01/26, 08:07 - Ana: PTT-20260110-WA0004.opus (file attached)\r\n[Voice message transcript: primera línea\r\nsegunda línea]\r\n10/01/26, 08:08 - José: vale\r\n[Voice message transcript: suelto]\r\n10/01/26, 08:09 - Ana: PTT-20260110-WA0005.opus (file attached)\r\n10/01/26, 08:10 - Ana: [Voice message transcript: solo citado]\r\n10/01/26, 08:11 - José: mira\r\n[Voice message transcript: sin cerrar\r\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": {"PTT-20260110-WA0001.opus": 3.5, "PTT-20260110-WA0005.opus": 2.25},
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "DMY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2026-01-10T08:00:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260110-WA0001.opus", "src": null, "seconds": 3.5, "status": "ok", "text": "Hola José, cómo estás", "words": 4}},
+          {"time": "2026-01-10T08:05:00", "sender": 1, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260110-WA0002.opus", "src": null, "seconds": null, "status": "empty", "text": "", "words": 0}},
+          {"time": "2026-01-10T08:06:00", "sender": 1, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260110-WA0003.opus", "src": null, "seconds": null, "status": "error", "text": "", "words": 0, "error": "Could not decode audio"}},
+          {"time": "2026-01-10T08:07:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260110-WA0004.opus", "src": null, "seconds": null, "status": "ok", "text": "primera línea\nsegunda línea", "words": 4}},
+          {"time": "2026-01-10T08:08:00", "sender": 1, "kind": "text", "text": "vale", "words": 1},
+          {"time": "2026-01-10T08:09:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260110-WA0005.opus", "src": null, "seconds": 2.25, "status": "pending", "text": "", "words": 0}},
+          {"time": "2026-01-10T08:10:00", "sender": 0, "kind": "text", "text": "[Voice message transcript: solo citado]", "words": 5},
+          {"time": "2026-01-10T08:11:00", "sender": 1, "kind": "text", "text": "mira\n[Voice message transcript: sin cerrar", "words": 6}
+        ],
+        "events": [],
+        "warnings": ["2 transcript lines in the chat belong to no voice message and were left out."]
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2026-01-10"],
+          "series": [
+            {"messages": [4], "words_typed": [5], "words_spoken": [8], "voice_notes": [3], "voice_seconds": [5.75], "voice_transcribed": [2], "voice_timed": [2]},
+            {"messages": [4], "words_typed": [7], "words_spoken": [0], "voice_notes": [2], "voice_seconds": [0], "voice_transcribed": [1], "voice_timed": [0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2026-01-05"],
+          "series": [
+            {"messages": [4], "words_typed": [5], "words_spoken": [8], "voice_notes": [3], "voice_seconds": [5.75], "voice_transcribed": [2], "voice_timed": [2]},
+            {"messages": [4], "words_typed": [7], "words_spoken": [0], "voice_notes": [2], "voice_seconds": [0], "voice_transcribed": [1], "voice_timed": [0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2026-01-01"],
+          "series": [
+            {"messages": [4], "words_typed": [5], "words_spoken": [8], "voice_notes": [3], "voice_seconds": [5.75], "voice_transcribed": [2], "voice_timed": [2]},
+            {"messages": [4], "words_typed": [7], "words_spoken": [0], "voice_notes": [2], "voice_seconds": [0], "voice_transcribed": [1], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 4, "words_typed": 5, "words_spoken": 8, "voice_notes": 3, "voice_seconds": 5.75, "voice_transcribed": 2, "voice_timed": 2},
+        {"messages": 4, "words_typed": 7, "words_spoken": 0, "voice_notes": 2, "voice_seconds": 0, "voice_transcribed": 1, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "results: ok, empty, error, pending, duplicates and durations",
+      "chat": "20/03/26, 10:00 - Ana: PTT-20260320-WA0001.opus (file attached)\n[Voice message transcript: versión antigua]\n20/03/26, 10:01 - José: PTT-20260320-WA0002.opus (file attached)\n20/03/26, 10:02 - Ana: PTT-20260320-WA0003.opus (file attached)\n20/03/26, 10:03 - José: PTT-20260320-WA0004.opus (file attached)\n20/03/26, 10:04 - Ana: PTT-20260320-WA0005.opus (file attached)\n20/03/26, 10:05 - José: xAUD-20260320-WA0006.mp3 no, escucha AUD-20260320-WA0006.mp3 cuando puedas\n20/03/26, 10:06 - Ana: cancio\u0301n.opus (file attached)\n20/03/26, 10:07 - José: otra vez PTT-20260320-WA0004.opus\n20/03/26, 10:08 - Ana: PTT-20260320-WA0007.opus (file attached)\n",
+      "results": [
+        {"file": "PTT-20260320-WA0001.opus", "messages": [{"chat_file": "chat.txt", "timestamp": "20/03/26, 10:00", "sender": "Ana"}], "status": "error", "text": "", "error": "Could not decode audio"},
+        {"file": "PTT-20260320-WA0001.opus", "messages": [{"chat_file": "chat.txt", "timestamp": "20/03/26, 10:00", "sender": "Ana"}], "status": "ok", "text": " Hola, qué tal ", "languages": ["es"], "duration_seconds": 2.5, "segments": []},
+        {"file": "PTT-20260320-WA0001.opus", "messages": [{"chat_file": "chat.txt", "timestamp": "20/03/26, 10:00", "sender": "Ana"}], "status": "error", "text": "", "error": "later failure"},
+        {"file": "PTT-20260320-WA0002.opus", "messages": [{"chat_file": "chat.txt", "timestamp": "20/03/26, 10:01", "sender": "José"}], "status": "ok", "text": "", "languages": [], "duration_seconds": 1, "segments": []},
+        {"file": "PTT-20260320-WA0003.opus", "messages": [{"chat_file": "chat.txt", "timestamp": "20/03/26, 10:02", "sender": "Ana"}], "status": "error", "text": "", "error": "first error"},
+        {"file": "PTT-20260320-WA0003.opus", "messages": [{"chat_file": "chat.txt", "timestamp": "20/03/26, 10:02", "sender": "Ana"}], "status": "error", "text": "", "error": "Audio file contains no samples."},
+        {"file": "PTT-20260320-WA0004.opus", "messages": [{"chat_file": "chat.txt", "timestamp": "20/03/26, 10:03", "sender": "José"}, {"chat_file": "chat.txt", "timestamp": "20/03/26, 10:07", "sender": "José"}], "status": "pending", "text": "", "languages": [], "segments": []},
+        {"file": "AUD-20260320-WA0006.mp3", "messages": [{"chat_file": "chat.txt", "timestamp": "20/03/26, 10:05", "sender": "José"}], "status": "ok", "text": "uno dos tres", "languages": ["es", "en"], "duration_seconds": 61.25, "segments": []},
+        {"file": "audio/canci\u00f3n.opus", "messages": [], "status": "ok", "text": "la la la", "duration_seconds": 30},
+        {"file": "PTT-20260320-WA0007.opus", "messages": [{"chat_file": "chat.txt", "timestamp": "20/03/26, 10:08", "sender": "Ana"}], "status": "error", "text": ""}
+      ],
+      "events_text": null,
+      "date_order": null,
+      "durations": {"PTT-20260320-WA0001.opus": 99, "PTT-20260320-WA0003.opus": 4.5, "PTT-20260320-WA0004.opus": 7},
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "DMY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2026-03-20T10:00:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260320-WA0001.opus", "src": null, "seconds": 2.5, "status": "ok", "text": "Hola, qué tal", "words": 3, "languages": ["es"]}},
+          {"time": "2026-03-20T10:01:00", "sender": 1, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260320-WA0002.opus", "src": null, "seconds": 1, "status": "empty", "text": "", "words": 0}},
+          {"time": "2026-03-20T10:02:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260320-WA0003.opus", "src": null, "seconds": 4.5, "status": "error", "text": "", "words": 0, "error": "Audio file contains no samples."}},
+          {"time": "2026-03-20T10:03:00", "sender": 1, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260320-WA0004.opus", "src": null, "seconds": 7, "status": "pending", "text": "", "words": 0}},
+          {"time": "2026-03-20T10:04:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260320-WA0005.opus", "src": null, "seconds": null, "status": "pending", "text": "", "words": 0}},
+          {"time": "2026-03-20T10:05:00", "sender": 1, "kind": "voice", "text": "xAUD-20260320-WA0006.mp3 no, escucha  cuando puedas", "words": 5, "voice": {"file": "AUD-20260320-WA0006.mp3", "src": null, "seconds": 61.25, "status": "ok", "text": "uno dos tres", "words": 3, "languages": ["es", "en"]}},
+          {"time": "2026-03-20T10:06:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "canci\u00f3n.opus", "src": null, "seconds": 30, "status": "ok", "text": "la la la", "words": 3}},
+          {"time": "2026-03-20T10:07:00", "sender": 1, "kind": "voice", "text": "otra vez", "words": 2, "voice": {"file": "PTT-20260320-WA0004.opus", "src": null, "seconds": 7, "status": "pending", "text": "", "words": 0}},
+          {"time": "2026-03-20T10:08:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260320-WA0007.opus", "src": null, "seconds": null, "status": "error", "text": "", "words": 0, "error": ""}}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2026-03-20"],
+          "series": [
+            {"messages": [5], "words_typed": [0], "words_spoken": [6], "voice_notes": [5], "voice_seconds": [37], "voice_transcribed": [2], "voice_timed": [3]},
+            {"messages": [4], "words_typed": [7], "words_spoken": [3], "voice_notes": [4], "voice_seconds": [76.25], "voice_transcribed": [2], "voice_timed": [4]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2026-03-16"],
+          "series": [
+            {"messages": [5], "words_typed": [0], "words_spoken": [6], "voice_notes": [5], "voice_seconds": [37], "voice_transcribed": [2], "voice_timed": [3]},
+            {"messages": [4], "words_typed": [7], "words_spoken": [3], "voice_notes": [4], "voice_seconds": [76.25], "voice_transcribed": [2], "voice_timed": [4]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2026-03-01"],
+          "series": [
+            {"messages": [5], "words_typed": [0], "words_spoken": [6], "voice_notes": [5], "voice_seconds": [37], "voice_transcribed": [2], "voice_timed": [3]},
+            {"messages": [4], "words_typed": [7], "words_spoken": [3], "voice_notes": [4], "voice_seconds": [76.25], "voice_transcribed": [2], "voice_timed": [4]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 5, "words_typed": 0, "words_spoken": 6, "voice_notes": 5, "voice_seconds": 37, "voice_transcribed": 2, "voice_timed": 3},
+        {"messages": 4, "words_typed": 7, "words_spoken": 3, "voice_notes": 4, "voice_seconds": 76.25, "voice_transcribed": 2, "voice_timed": 4}
+      ]
+    },
+    {
+      "name": "results from another export",
+      "chat": "[2/3/26, 7:00:00 PM] Ana: <attached: 00000041-AUDIO-2026-02-03-19-00-00.opus>\n[2/3/26, 7:05:00 PM] José: <attached: 00000042-AUDIO-2026-02-03-19-05-00.opus>\n[2/3/26, 7:06:00 PM] Ana: <attached: 00000043-AUDIO-2026-02-03-19-06-00.opus>\n[2/3/26, 7:07:00 PM] José: <attached: 00000044-AUDIO-2026-02-03-19-07-00.opus>\n[2/3/26, 7:08:00 PM] Ana: <attached: 00000045-AUDIO-2026-02-03-19-08-00.opus>\n[2/3/26, 7:09:00 PM] José: <attached: 00000046-AUDIO-2026-02-03-19-09-00.opus>\n",
+      "results": [
+        {"file": "WhatsApp Chat - Ana/00000041-AUDIO-2026-02-03-19-00-00.opus", "messages": [{"chat_file": "WhatsApp Chat - Ana/_chat.txt", "timestamp": "03/02/2026, 19:00:00", "sender": "Ana"}], "status": "ok", "text": "hello from the other export", "languages": ["en"], "duration_seconds": 3},
+        {"file": "WhatsApp Chat - Ana/00000042-AUDIO-2026-02-03-19-05-00.opus", "messages": [{"chat_file": "WhatsApp Chat - Ana/_chat.txt", "timestamp": "03/02/2026, 19:05:00", "sender": "José"}], "status": "ok", "text": "second one", "languages": ["en"], "duration_seconds": 2},
+        {"file": "a/00000043-AUDIO-2026-02-03-19-06-00.opus", "messages": [{"chat_file": "a/_chat.txt", "timestamp": "2/3/26, 7:06:00 PM", "sender": "Ana"}], "status": "ok", "text": "from folder a", "duration_seconds": 4},
+        {"file": "b/00000043-AUDIO-2026-02-03-19-06-00.opus", "messages": [{"chat_file": "b/_chat.txt", "timestamp": "9/9/25, 1:00:00 PM", "sender": "Li"}], "status": "ok", "text": "from folder b", "duration_seconds": 5},
+        {"file": "a/00000044-AUDIO-2026-02-03-19-07-00.opus", "messages": [{"chat_file": "a/_chat.txt", "timestamp": "1/1/25, 1:00:00 PM", "sender": "José"}], "status": "ok", "text": "wrong a", "duration_seconds": 6},
+        {"file": "b/00000044-AUDIO-2026-02-03-19-07-00.opus", "messages": [{"chat_file": "b/_chat.txt", "timestamp": "2/3/26, 7:07:00 PM", "sender": "Ana"}], "status": "ok", "text": "wrong b", "duration_seconds": 6},
+        {"file": "00000045-AUDIO-2026-02-03-19-08-00.opus", "messages": [], "status": "ok", "text": "no context", "duration_seconds": 2},
+        {"file": "a/00000046-AUDIO-2026-02-03-19-09-00.opus", "messages": [{"chat_file": "a/_chat.txt", "timestamp": "2/3/26, 7:09:00 PM", "sender": "José"}], "status": "ok", "text": "copy a", "duration_seconds": 8},
+        {"file": "b/00000046-AUDIO-2026-02-03-19-09-00.opus", "messages": [{"chat_file": "b/_chat.txt", "timestamp": "2/3/26, 7:09:00 PM", "sender": "José"}], "status": "ok", "text": "copy b", "duration_seconds": 8}
+      ],
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "MDY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2026-02-03T19:00:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "00000041-AUDIO-2026-02-03-19-00-00.opus", "src": null, "seconds": 3, "status": "ok", "text": "hello from the other export", "words": 5, "languages": ["en"]}},
+          {"time": "2026-02-03T19:05:00", "sender": 1, "kind": "voice", "text": "", "words": 0, "voice": {"file": "00000042-AUDIO-2026-02-03-19-05-00.opus", "src": null, "seconds": 2, "status": "ok", "text": "second one", "words": 2, "languages": ["en"]}},
+          {"time": "2026-02-03T19:06:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "00000043-AUDIO-2026-02-03-19-06-00.opus", "src": null, "seconds": 4, "status": "ok", "text": "from folder a", "words": 3}},
+          {"time": "2026-02-03T19:07:00", "sender": 1, "kind": "voice", "text": "", "words": 0, "voice": {"file": "00000044-AUDIO-2026-02-03-19-07-00.opus", "src": null, "seconds": null, "status": "pending", "text": "", "words": 0}},
+          {"time": "2026-02-03T19:08:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "00000045-AUDIO-2026-02-03-19-08-00.opus", "src": null, "seconds": 2, "status": "ok", "text": "no context", "words": 2}},
+          {"time": "2026-02-03T19:09:00", "sender": 1, "kind": "voice", "text": "", "words": 0, "voice": {"file": "00000046-AUDIO-2026-02-03-19-09-00.opus", "src": null, "seconds": 8, "status": "ok", "text": "copy b", "words": 2}}
+        ],
+        "events": [],
+        "warnings": ["2 transcripts were matched by file name only; the report seems to come from a different export of this chat."]
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2026-02-03"],
+          "series": [
+            {"messages": [3], "words_typed": [0], "words_spoken": [10], "voice_notes": [3], "voice_seconds": [9], "voice_transcribed": [3], "voice_timed": [3]},
+            {"messages": [3], "words_typed": [0], "words_spoken": [4], "voice_notes": [3], "voice_seconds": [10], "voice_transcribed": [2], "voice_timed": [2]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2026-02-02"],
+          "series": [
+            {"messages": [3], "words_typed": [0], "words_spoken": [10], "voice_notes": [3], "voice_seconds": [9], "voice_transcribed": [3], "voice_timed": [3]},
+            {"messages": [3], "words_typed": [0], "words_spoken": [4], "voice_notes": [3], "voice_seconds": [10], "voice_transcribed": [2], "voice_timed": [2]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2026-02-01"],
+          "series": [
+            {"messages": [3], "words_typed": [0], "words_spoken": [10], "voice_notes": [3], "voice_seconds": [9], "voice_transcribed": [3], "voice_timed": [3]},
+            {"messages": [3], "words_typed": [0], "words_spoken": [4], "voice_notes": [3], "voice_seconds": [10], "voice_transcribed": [2], "voice_timed": [2]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 3, "words_typed": 0, "words_spoken": 10, "voice_notes": 3, "voice_seconds": 9, "voice_transcribed": 3, "voice_timed": 3},
+        {"messages": 3, "words_typed": 0, "words_spoken": 4, "voice_notes": 3, "voice_seconds": 10, "voice_transcribed": 2, "voice_timed": 2}
+      ]
+    },
+    {
+      "name": "a failed result does not replace the transcript the chat carries",
+      "chat": "01/02/26, 10:00 - Ana: PTT-20260201-WA0001.opus (file attached)\n[Voice message transcript: kept from the chat]\n",
+      "results": [
+        {"file": "PTT-20260201-WA0001.opus", "messages": [{"chat_file": "_chat.txt", "timestamp": "01/02/26, 10:00", "sender": "Ana"}], "status": "error", "text": "", "error": "service refused"}
+      ],
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana",
+        "date_order": "DMY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana"],
+        "messages": [
+          {"time": "2026-02-01T10:00:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260201-WA0001.opus", "src": null, "seconds": null, "status": "ok", "text": "kept from the chat", "words": 4}}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2026-02-01"],
+          "series": [
+            {"messages": [1], "words_typed": [0], "words_spoken": [4], "voice_notes": [1], "voice_seconds": [0], "voice_transcribed": [1], "voice_timed": [0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2026-01-26"],
+          "series": [
+            {"messages": [1], "words_typed": [0], "words_spoken": [4], "voice_notes": [1], "voice_seconds": [0], "voice_transcribed": [1], "voice_timed": [0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2026-02-01"],
+          "series": [
+            {"messages": [1], "words_typed": [0], "words_spoken": [4], "voice_notes": [1], "voice_seconds": [0], "voice_transcribed": [1], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 1, "words_typed": 0, "words_spoken": 4, "voice_notes": 1, "voice_seconds": 0, "voice_transcribed": 1, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "messages without a time, weeks and months across a year boundary, events",
+      "chat": "2025/12/28, 08:00 - Ana: pegado antes\n29/12/2025, 23:50 - Ana: fin de año\n2025/12/30, 10:00 - José: pegado después\n31/12/2025, 23:59 - José: casi\n01/01/2026, 00:01 - Ana: feliz año nuevo\n05/01/2026, 09:00 - José: PTT-20260105-WA0001.opus (file attached)\n",
+      "results": [
+        {"file": "PTT-20260105-WA0001.opus", "messages": [{"chat_file": "otro.txt", "timestamp": "1/5/26, 9:00 AM", "sender": "José"}], "status": "ok", "text": "feliz año a todos", "languages": ["es"], "duration_seconds": 90}
+      ],
+      "events_text": "# hitos\n31/12/2025, Nochevieja\n2026-01-01 | Año nuevo\nsin fecha\n05.01.26\n",
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "DMY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": null, "sender": 0, "kind": "text", "text": "pegado antes", "words": 2},
+          {"time": "2025-12-29T23:50:00", "sender": 0, "kind": "text", "text": "fin de año", "words": 3},
+          {"time": null, "sender": 1, "kind": "text", "text": "pegado después", "words": 2},
+          {"time": "2025-12-31T23:59:00", "sender": 1, "kind": "text", "text": "casi", "words": 1},
+          {"time": "2026-01-01T00:01:00", "sender": 0, "kind": "text", "text": "feliz año nuevo", "words": 3},
+          {"time": "2026-01-05T09:00:00", "sender": 1, "kind": "voice", "text": "", "words": 0, "voice": {"file": "PTT-20260105-WA0001.opus", "src": null, "seconds": 90, "status": "ok", "text": "feliz año a todos", "words": 4, "languages": ["es"]}}
+        ],
+        "events": [
+          {"date": "2025-12-31", "label": "Nochevieja"},
+          {"date": "2026-01-01", "label": "Año nuevo"},
+          {"date": "2026-01-05", "label": "2026-01-05"}
+        ],
+        "warnings": ["1 transcript was matched by file name only; the report seems to come from a different export of this chat."]
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2025-12-29", "2025-12-30", "2025-12-31", "2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04", "2026-01-05"],
+          "series": [
+            {"messages": [2, 0, 0, 1, 0, 0, 0, 0], "words_typed": [5, 0, 0, 3, 0, 0, 0, 0], "words_spoken": [0, 0, 0, 0, 0, 0, 0, 0], "voice_notes": [0, 0, 0, 0, 0, 0, 0, 0], "voice_seconds": [0, 0, 0, 0, 0, 0, 0, 0], "voice_transcribed": [0, 0, 0, 0, 0, 0, 0, 0], "voice_timed": [0, 0, 0, 0, 0, 0, 0, 0]},
+            {"messages": [1, 0, 1, 0, 0, 0, 0, 1], "words_typed": [2, 0, 1, 0, 0, 0, 0, 0], "words_spoken": [0, 0, 0, 0, 0, 0, 0, 4], "voice_notes": [0, 0, 0, 0, 0, 0, 0, 1], "voice_seconds": [0, 0, 0, 0, 0, 0, 0, 90], "voice_transcribed": [0, 0, 0, 0, 0, 0, 0, 1], "voice_timed": [0, 0, 0, 0, 0, 0, 0, 1]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2025-12-29", "2026-01-05"],
+          "series": [
+            {"messages": [3, 0], "words_typed": [8, 0], "words_spoken": [0, 0], "voice_notes": [0, 0], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]},
+            {"messages": [2, 1], "words_typed": [3, 0], "words_spoken": [0, 4], "voice_notes": [0, 1], "voice_seconds": [0, 90], "voice_transcribed": [0, 1], "voice_timed": [0, 1]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2025-12-01", "2026-01-01"],
+          "series": [
+            {"messages": [2, 1], "words_typed": [5, 3], "words_spoken": [0, 0], "voice_notes": [0, 0], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]},
+            {"messages": [2, 1], "words_typed": [3, 0], "words_spoken": [0, 4], "voice_notes": [0, 1], "voice_seconds": [0, 90], "voice_transcribed": [0, 1], "voice_timed": [0, 1]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 3, "words_typed": 8, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 3, "words_typed": 3, "words_spoken": 4, "voice_notes": 1, "voice_seconds": 90, "voice_transcribed": 1, "voice_timed": 1}
+      ]
+    },
+    {
+      "name": "forced year-first order with a two-digit year",
+      "chat": "26/01/05, 10:00 - Ana: año primero\n26/01/06, 10:00 - José: sí\n",
+      "results": null,
+      "events_text": null,
+      "date_order": "YMD",
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "YMD",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2026-01-05T10:00:00", "sender": 0, "kind": "text", "text": "año primero", "words": 2},
+          {"time": "2026-01-06T10:00:00", "sender": 1, "kind": "text", "text": "sí", "words": 1}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2026-01-05", "2026-01-06"],
+          "series": [
+            {"messages": [1, 0], "words_typed": [2, 0], "words_spoken": [0, 0], "voice_notes": [0, 0], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]},
+            {"messages": [0, 1], "words_typed": [0, 1], "words_spoken": [0, 0], "voice_notes": [0, 0], "voice_seconds": [0, 0], "voice_transcribed": [0, 0], "voice_timed": [0, 0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2026-01-05"],
+          "series": [
+            {"messages": [1], "words_typed": [2], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2026-01-01"],
+          "series": [
+            {"messages": [1], "words_typed": [2], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 1, "words_typed": 2, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 1, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "forced order that gives no dates",
+      "chat": "2025/12/28, 08:00 - Ana: uno\n2025/12/29, 08:00 - José: dos tres\n",
+      "results": null,
+      "events_text": null,
+      "date_order": "DMY",
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "DMY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": null, "sender": 0, "kind": "text", "text": "uno", "words": 1},
+          {"time": null, "sender": 1, "kind": "text", "text": "dos tres", "words": 2}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": [],
+          "series": [
+            {"messages": [], "words_typed": [], "words_spoken": [], "voice_notes": [], "voice_seconds": [], "voice_transcribed": [], "voice_timed": []},
+            {"messages": [], "words_typed": [], "words_spoken": [], "voice_notes": [], "voice_seconds": [], "voice_transcribed": [], "voice_timed": []}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": [],
+          "series": [
+            {"messages": [], "words_typed": [], "words_spoken": [], "voice_notes": [], "voice_seconds": [], "voice_transcribed": [], "voice_timed": []},
+            {"messages": [], "words_typed": [], "words_spoken": [], "voice_notes": [], "voice_seconds": [], "voice_transcribed": [], "voice_timed": []}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": [],
+          "series": [
+            {"messages": [], "words_typed": [], "words_spoken": [], "voice_notes": [], "voice_seconds": [], "voice_transcribed": [], "voice_timed": []},
+            {"messages": [], "words_typed": [], "words_spoken": [], "voice_notes": [], "voice_seconds": [], "voice_transcribed": [], "voice_timed": []}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 1, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 1, "words_typed": 2, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "group chat: participant order, sentences that stay text, media types",
+      "chat": "07/06/25, 18:00 - Ana created group \"Viaje\"\n07/06/25, 18:01 - Ana: <sigh>\n07/06/25, 18:02 - José: note: see report.pdf\n07/06/25, 18:03 - Li: ok\n07/06/25, 18:04 - \uff2c\uff49: hola\n07/06/25, 18:05 - \ud83d\ude00 Ana: hola\n07/06/25, 18:06 - Zoe: hi\n07/06/25, 18:07 - Élodie: salut\n07/06/25, 18:08 - Ana: null\n07/06/25, 18:09 - José: STK-20250607-WA0002.webp (file attached)\n07/06/25, 18:10 - José: Contact card omitted\n07/06/25, 18:11 - Li: Informe final.pdf (file attached)\nel informe\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "José · Ana · Li +4",
+        "date_order": "DMY",
+        "date_order_ambiguous": false,
+        "participants": ["José", "Ana", "Li", "Zoe", "Élodie", "\uff2c\uff49", "\ud83d\ude00 Ana"],
+        "messages": [
+          {"time": "2025-06-07T18:00:00", "sender": null, "kind": "system", "text": "Ana created group \"Viaje\"", "words": 0},
+          {"time": "2025-06-07T18:01:00", "sender": 1, "kind": "text", "text": "<sigh>", "words": 1},
+          {"time": "2025-06-07T18:02:00", "sender": 0, "kind": "text", "text": "note: see report.pdf", "words": 3},
+          {"time": "2025-06-07T18:03:00", "sender": 2, "kind": "text", "text": "ok", "words": 1},
+          {"time": "2025-06-07T18:04:00", "sender": 5, "kind": "text", "text": "hola", "words": 1},
+          {"time": "2025-06-07T18:05:00", "sender": 6, "kind": "text", "text": "hola", "words": 1},
+          {"time": "2025-06-07T18:06:00", "sender": 3, "kind": "text", "text": "hi", "words": 1},
+          {"time": "2025-06-07T18:07:00", "sender": 4, "kind": "text", "text": "salut", "words": 1},
+          {"time": "2025-06-07T18:08:00", "sender": 1, "kind": "media", "text": "", "words": 0, "media": {"type": "omitted", "file": null}},
+          {"time": "2025-06-07T18:09:00", "sender": 0, "kind": "media", "text": "", "words": 0, "media": {"type": "sticker", "file": "STK-20250607-WA0002.webp"}},
+          {"time": "2025-06-07T18:10:00", "sender": 0, "kind": "media", "text": "", "words": 0, "media": {"type": "omitted", "file": null}},
+          {"time": "2025-06-07T18:11:00", "sender": 2, "kind": "media", "text": "el informe", "words": 2, "media": {"type": "document", "file": "Informe final.pdf"}}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2025-06-07"],
+          "series": [
+            {"messages": [3], "words_typed": [3], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [2], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [2], "words_typed": [3], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2025-06-02"],
+          "series": [
+            {"messages": [3], "words_typed": [3], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [2], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [2], "words_typed": [3], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2025-06-01"],
+          "series": [
+            {"messages": [3], "words_typed": [3], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [2], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [2], "words_typed": [3], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [1], "words_typed": [1], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 3, "words_typed": 3, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 2, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 2, "words_typed": 3, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 1, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 1, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 1, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 1, "words_typed": 1, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "ios attachments: media types and several recordings in one message",
+      "chat": "[3/4/24, 10:00:00] Ana: \u200e<attached: 00000051-GIF-2024-03-04-10-00-00.mp4>\n[3/4/24, 10:01:00] Ana: \u200e<attached: 00000052-VIDEO-2024-03-04-10-01-00.mp4>\n[3/4/24, 10:02:00] José: \u200e<attached: 00000053-Informe final.pdf> mira \u200e<attached: 00000054-AUDIO-2024-03-04-10-02-00.opus> y \u200e<attached: 00000055-AUDIO-2024-03-04-10-02-30.opus>\n[3/4/24, 10:03:00] José: \u200e<attached: 00000056-STICKER-2024-03-04-10-03-00.webp>\n[3/4/24, 10:04:00] Ana: \u200e<attached: 00000057-Ana.vcf>\n[3/4/24, 10:05:00] Ana: listo <Se editó este mensaje.>\n[3/4/24, 10:06:00] José: <pièce jointe : 00000058-PHOTO-2024-03-04-10-06-00.jpg>\n[3/4/24, 10:07:00] Ana: ‎<attached: 00000059-PHOTO-2024-03-04-10-07-00.jpg> y ‎<attached: 00000060-Lista.pdf>\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "MDY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2024-03-04T10:00:00", "sender": 0, "kind": "media", "text": "", "words": 0, "media": {"type": "gif", "file": "00000051-GIF-2024-03-04-10-00-00.mp4"}},
+          {"time": "2024-03-04T10:01:00", "sender": 0, "kind": "media", "text": "", "words": 0, "media": {"type": "video", "file": "00000052-VIDEO-2024-03-04-10-01-00.mp4"}},
+          {"time": "2024-03-04T10:02:00", "sender": 1, "kind": "voice", "text": "mira  y <attached: 00000055-AUDIO-2024-03-04-10-02-30.opus>", "words": 4, "voice": {"file": "00000054-AUDIO-2024-03-04-10-02-00.opus", "src": null, "seconds": null, "status": "pending", "text": "", "words": 0}},
+          {"time": "2024-03-04T10:03:00", "sender": 1, "kind": "media", "text": "", "words": 0, "media": {"type": "sticker", "file": "00000056-STICKER-2024-03-04-10-03-00.webp"}},
+          {"time": "2024-03-04T10:04:00", "sender": 0, "kind": "media", "text": "", "words": 0, "media": {"type": "contact", "file": "00000057-Ana.vcf"}},
+          {"time": "2024-03-04T10:05:00", "sender": 0, "kind": "text", "text": "listo", "words": 1, "edited": true},
+          {"time": "2024-03-04T10:06:00", "sender": 1, "kind": "media", "text": "", "words": 0, "media": {"type": "image", "file": "00000058-PHOTO-2024-03-04-10-06-00.jpg"}},
+          {"time": "2024-03-04T10:07:00", "sender": 0, "kind": "media", "text": "y", "words": 1, "media": {"type": "image", "file": "00000059-PHOTO-2024-03-04-10-07-00.jpg"}}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2024-03-04"],
+          "series": [
+            {"messages": [5], "words_typed": [2], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [3], "words_typed": [4], "words_spoken": [0], "voice_notes": [1], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2024-03-04"],
+          "series": [
+            {"messages": [5], "words_typed": [2], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [3], "words_typed": [4], "words_spoken": [0], "voice_notes": [1], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2024-03-01"],
+          "series": [
+            {"messages": [5], "words_typed": [2], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [3], "words_typed": [4], "words_spoken": [0], "voice_notes": [1], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 5, "words_typed": 2, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 3, "words_typed": 4, "words_spoken": 0, "voice_notes": 1, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "attachment labels and placeholders at their limits",
+      "chat": "08/06/25, 09:00 - Ana: IMG-20250608-WA0001.jpg (abcdefghijklmnopqrstuvwxyzabcdefghijklmn)\n08/06/25, 09:01 - Ana: IMG-20250608-WA0002.jpg (abcdefghijklmnopqrstuvwxyzabcdefghijklmno)\n08/06/25, 09:02 - José: <abcdefghijklmnopqrstuvwxyzabcdefghijklm😀: 00000061-PHOTO-2025-06-08-09-02-00.jpg>\n08/06/25, 09:03 - José: <abcdefghijklmnopqrstuvwxyzabcdefghijklmn😀: 00000062-PHOTO-2025-06-08-09-03-00.jpg>\n08/06/25, 09:04 - Ana: tarjeta de contacto omitida\n08/06/25, 09:05 - José: Null\n08/06/25, 09:06 - Ana: Áudio omitido\n08/06/25, 09:07 - José: <uno dos tres cuatro cinco>\n08/06/25, 09:08 - Ana: <uno dos tres cuatro cinco>\n08/06/25, 09:09 - José: You deleted this message..\n08/06/25, 09:10 - Ana: <Multimedia omitido>\n08/06/25, 09:11 - José: <abcdefghijklmnopqrstuvwxyzabcdefghijklmn : 00000063-PHOTO-2025-06-08-09-11-00.jpg>\n08/06/25, 09:12 - Ana: <: 00000064-PHOTO-2025-06-08-09-12-00.jpg>\n08/06/25, 09:13 - José: Video genial\n08/06/25, 09:14 - Ana: todo omitido\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "Ana · José",
+        "date_order": "DMY",
+        "date_order_ambiguous": false,
+        "participants": ["Ana", "José"],
+        "messages": [
+          {"time": "2025-06-08T09:00:00", "sender": 0, "kind": "media", "text": "", "words": 0, "media": {"type": "image", "file": "IMG-20250608-WA0001.jpg"}},
+          {"time": "2025-06-08T09:01:00", "sender": 0, "kind": "text", "text": "IMG-20250608-WA0002.jpg (abcdefghijklmnopqrstuvwxyzabcdefghijklmno)", "words": 2},
+          {"time": "2025-06-08T09:02:00", "sender": 1, "kind": "media", "text": "", "words": 0, "media": {"type": "image", "file": "00000061-PHOTO-2025-06-08-09-02-00.jpg"}},
+          {"time": "2025-06-08T09:03:00", "sender": 1, "kind": "text", "text": "<abcdefghijklmnopqrstuvwxyzabcdefghijklmn😀: 00000062-PHOTO-2025-06-08-09-03-00.jpg>", "words": 2},
+          {"time": "2025-06-08T09:04:00", "sender": 0, "kind": "text", "text": "tarjeta de contacto omitida", "words": 4},
+          {"time": "2025-06-08T09:05:00", "sender": 1, "kind": "text", "text": "Null", "words": 1},
+          {"time": "2025-06-08T09:06:00", "sender": 0, "kind": "voice", "text": "", "words": 0, "voice": {"file": null, "src": null, "seconds": null, "status": "missing", "text": "", "words": 0}},
+          {"time": "2025-06-08T09:07:00", "sender": 1, "kind": "text", "text": "<uno dos tres cuatro cinco>", "words": 5},
+          {"time": "2025-06-08T09:08:00", "sender": 0, "kind": "text", "text": "<uno dos tres cuatro cinco>", "words": 5},
+          {"time": "2025-06-08T09:09:00", "sender": 1, "kind": "text", "text": "You deleted this message..", "words": 4},
+          {"time": "2025-06-08T09:10:00", "sender": 0, "kind": "media", "text": "", "words": 0, "media": {"type": "omitted", "file": null}},
+          {"time": "2025-06-08T09:11:00", "sender": 1, "kind": "media", "text": "", "words": 0, "media": {"type": "image", "file": "00000063-PHOTO-2025-06-08-09-11-00.jpg"}},
+          {"time": "2025-06-08T09:12:00", "sender": 0, "kind": "text", "text": "<: 00000064-PHOTO-2025-06-08-09-12-00.jpg>", "words": 2},
+          {"time": "2025-06-08T09:13:00", "sender": 1, "kind": "text", "text": "Video genial", "words": 2},
+          {"time": "2025-06-08T09:14:00", "sender": 0, "kind": "text", "text": "todo omitido", "words": 2}
+        ],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {
+          "bucket": "day",
+          "buckets": ["2025-06-08"],
+          "series": [
+            {"messages": [8], "words_typed": [15], "words_spoken": [0], "voice_notes": [1], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [7], "words_typed": [14], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "week": {
+          "bucket": "week",
+          "buckets": ["2025-06-02"],
+          "series": [
+            {"messages": [8], "words_typed": [15], "words_spoken": [0], "voice_notes": [1], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [7], "words_typed": [14], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        },
+        "month": {
+          "bucket": "month",
+          "buckets": ["2025-06-01"],
+          "series": [
+            {"messages": [8], "words_typed": [15], "words_spoken": [0], "voice_notes": [1], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]},
+            {"messages": [7], "words_typed": [14], "words_spoken": [0], "voice_notes": [0], "voice_seconds": [0], "voice_transcribed": [0], "voice_timed": [0]}
+          ]
+        }
+      },
+      "totals": [
+        {"messages": 8, "words_typed": 15, "words_spoken": 0, "voice_notes": 1, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0},
+        {"messages": 7, "words_typed": 14, "words_spoken": 0, "voice_notes": 0, "voice_seconds": 0, "voice_transcribed": 0, "voice_timed": 0}
+      ]
+    },
+    {
+      "name": "not a chat",
+      "chat": "just some notes\nwithout any header\n",
+      "results": null,
+      "events_text": null,
+      "date_order": null,
+      "durations": null,
+      "model": {
+        "schema": 1,
+        "title": "",
+        "date_order": "DMY",
+        "date_order_ambiguous": false,
+        "participants": [],
+        "messages": [],
+        "events": [],
+        "warnings": []
+      },
+      "aggregates": {
+        "day": {"bucket": "day", "buckets": [], "series": []},
+        "week": {"bucket": "week", "buckets": [], "series": []},
+        "month": {"bucket": "month", "buckets": [], "series": []}
+      },
+      "totals": []
+    }
+  ]
+}

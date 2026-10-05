@@ -1,0 +1,335 @@
+.voxpad-viewer, .voxpad-viewer *, .voxpad-viewer *::before, .voxpad-viewer *::after { box-sizing: border-box; }
+.voxpad-viewer :where(button, select, input, textarea, details, summary, progress, table, h2, h3, h4, p, ul, ol, li, a) { all: revert; box-sizing: border-box; }
+.voxpad-viewer [hidden] { display: none !important; }
+
+/* The host gives the height (--vp-height) and may round the frame (--vp-radius); the lists scroll inside it. */
+.voxpad-viewer {
+  --vp-paper: #f5f4ee; --vp-surface: #fffefa; --vp-ink: #253730; --vp-muted: #55665b; --vp-line: #dde3d6;
+  --vp-accent: #194e40; --vp-on-accent: #fffef4; --vp-focus: #a5600b;
+  --vp-me: #dcecd9; --vp-me-line: #c2dcc0; --vp-them: #fffefa; --vp-them-line: #dfe5d8;
+  --vp-mark: #ffdf80; --vp-mark-ink: #2b2400; --vp-mark-line: #a87600;
+  --vp-warn: #765611; --vp-warn-bg: #fcf6e4; --vp-problem: #9a3b1f;
+  --vp-event: #4f4a8c; --vp-event-bg: #edecf6; --vp-event-line: #cfcde6;
+  --vp-p0: #55665b; --vp-p1: #00548a; --vp-p2: #a64800; --vp-p3: #00735a; --vp-p4: #7d5c00; --vp-p5: #a3407b; --vp-p6: #2c6a00;
+  --vp-c0: #7f8a82; --vp-c1: #2a78d6; --vp-c2: #eb6834; --vp-c3: #1baf7a; --vp-c4: #eda100; --vp-c5: #e87ba4; --vp-c6: #008300; --vp-shade: #f3f2ea;
+  color-scheme: light; display: flex; flex-direction: column; height: var(--vp-height, 640px); max-height: 100vh; min-height: 420px; overflow: hidden;
+  color: var(--vp-ink); background: var(--vp-surface); border: 1px solid var(--vp-line); border-radius: var(--vp-radius, 0px);
+  font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-synthesis: none; text-align: start; -webkit-text-size-adjust: 100%;
+  /* The interface is written in English and time runs from left to right, whatever the page around it; chat text finds its own direction. */
+  direction: ltr; unicode-bidi: isolate;
+}
+@media (prefers-color-scheme: dark) {
+  .voxpad-viewer[data-vp-theme="auto"] {
+    --vp-paper: #121a16; --vp-surface: #18221d; --vp-ink: #e4ebe4; --vp-muted: #a4b3a8; --vp-line: #2e3c35;
+    --vp-accent: #8fd3b0; --vp-on-accent: #0f2a20; --vp-focus: #f0b25c;
+    --vp-me: #1f4435; --vp-me-line: #2c5c48; --vp-them: #1f2a25; --vp-them-line: #33423a;
+    --vp-mark: #e9c659; --vp-mark-ink: #1f1a00; --vp-mark-line: #e9c659;
+    --vp-warn: #e8c984; --vp-warn-bg: #2b2616; --vp-problem: #f2a48c;
+    --vp-event: #c3bff5; --vp-event-bg: #262542; --vp-event-line: #3c3a66;
+    --vp-p0: #a4b3a8; --vp-p1: #6db6ea; --vp-p2: #f29a66; --vp-p3: #4fcaa6; --vp-p4: #e6b952; --vp-p5: #e59ac6; --vp-p6: #9bd67a;
+    --vp-c0: #8a958c; --vp-c1: #3987e5; --vp-c2: #d95926; --vp-c3: #199e70; --vp-c4: #c98500; --vp-c5: #d55181; --vp-c6: #008300; --vp-shade: #131b17;
+    color-scheme: dark;
+  }
+}
+
+.voxpad-viewer .vp-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.voxpad-viewer .vp-icon { flex: none; width: 1.15em; height: 1.15em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.voxpad-viewer .vp-icon-solid { fill: currentColor; stroke: none; }
+.voxpad-viewer .vp-control:focus-visible { outline: 2px solid var(--vp-focus); outline-offset: 2px; }
+.voxpad-viewer .vp-p0 { color: var(--vp-p0); }
+.voxpad-viewer .vp-p1 { color: var(--vp-p1); }
+.voxpad-viewer .vp-p2 { color: var(--vp-p2); }
+.voxpad-viewer .vp-p3 { color: var(--vp-p3); }
+.voxpad-viewer .vp-p4 { color: var(--vp-p4); }
+.voxpad-viewer .vp-p5 { color: var(--vp-p5); }
+.voxpad-viewer .vp-p6 { color: var(--vp-p6); }
+
+.voxpad-viewer .vp-head { flex: none; padding: 12px 16px 0; border-bottom: 1px solid var(--vp-line); }
+.voxpad-viewer .vp-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.voxpad-viewer .vp-title { margin: 0; font-size: 17px; font-weight: 650; line-height: 1.3; letter-spacing: -.2px; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-summary { margin: 0; font-size: 12px; color: var(--vp-muted); }
+.voxpad-viewer .vp-notices { margin: 0 0 0 auto; max-width: 100%; font-size: 12px; color: var(--vp-warn); }
+.voxpad-viewer .vp-notices[open] { flex-basis: 100%; margin: 4px 0 0; padding: 6px 10px; border-radius: 8px; background: var(--vp-warn-bg); }
+.voxpad-viewer .vp-notices-label { cursor: pointer; border-radius: 4px; }
+.voxpad-viewer .vp-notices-list { margin: 4px 0 0; padding: 0 0 0 18px; }
+.voxpad-viewer .vp-notice { margin: 2px 0; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-tabs { display: flex; gap: 4px; margin-top: 8px; overflow-x: auto; scrollbar-width: none; }
+.voxpad-viewer .vp-tab { flex: none; display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 8px 12px 9px; border: 0; border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; background: none; color: var(--vp-muted); font: inherit; font-size: 13px; font-weight: 550; white-space: nowrap; cursor: pointer; }
+.voxpad-viewer .vp-tab:hover { color: var(--vp-ink); }
+.voxpad-viewer .vp-tab[aria-selected="true"] { color: var(--vp-accent); border-bottom-color: var(--vp-accent); }
+.voxpad-viewer .vp-tab:focus-visible { outline-offset: -2px; }
+.voxpad-viewer .vp-tab-count { padding: 0 6px; border-radius: 9px; background: var(--vp-paper); color: var(--vp-muted); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.voxpad-viewer .vp-tab-count:empty { display: none; }
+.voxpad-viewer .vp-body { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.voxpad-viewer .vp-panel { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+
+.voxpad-viewer .vp-toolbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 16px; border-bottom: 1px solid var(--vp-line); }
+.voxpad-viewer .vp-find { flex: 1 1 340px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.voxpad-viewer .vp-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.voxpad-viewer .vp-field { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--vp-muted); white-space: nowrap; }
+.voxpad-viewer .vp-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.voxpad-viewer .vp-checkbox { width: 16px; height: 16px; margin: 0; accent-color: var(--vp-accent); }
+.voxpad-viewer .vp-input { min-width: 0; margin: 0; padding: 6px 10px; border: 1px solid var(--vp-line); border-radius: 8px; background: var(--vp-surface); color: var(--vp-ink); font: inherit; font-size: 13px; }
+.voxpad-viewer .vp-input::placeholder { color: var(--vp-muted); opacity: 1; }
+.voxpad-viewer .vp-search { flex: 1 1 120px; -webkit-appearance: none; appearance: none; }
+.voxpad-viewer .vp-date { padding: 4px 8px; }
+.voxpad-viewer .vp-select { max-width: 100%; margin: 0; padding: 5px 6px; border: 1px solid var(--vp-line); border-radius: 8px; background: var(--vp-surface); color: var(--vp-ink); font: inherit; font-size: 13px; }
+.voxpad-viewer .vp-button { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 12px; border: 1px solid var(--vp-line); border-radius: 8px; background: var(--vp-surface); color: var(--vp-ink); font: inherit; font-size: 13px; cursor: pointer; }
+.voxpad-viewer .vp-icon-button { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; margin: 0; padding: 0; border: 1px solid var(--vp-line); border-radius: 8px; background: var(--vp-surface); color: var(--vp-ink); font: inherit; font-size: 15px; cursor: pointer; }
+.voxpad-viewer .vp-button:hover, .voxpad-viewer .vp-icon-button:hover { border-color: var(--vp-muted); }
+.voxpad-viewer .vp-button:disabled, .voxpad-viewer .vp-icon-button:disabled { border-color: var(--vp-line); opacity: .45; cursor: default; }
+.voxpad-viewer .vp-toolbar .vp-filters-toggle { display: none; }
+.voxpad-viewer .vp-filters-toggle[aria-expanded="true"] { border-color: var(--vp-accent); color: var(--vp-accent); }
+.voxpad-viewer .vp-link { margin: 0; padding: 2px 0; border: 0; border-radius: 3px; background: none; color: var(--vp-accent); font: inherit; font-size: 12px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.voxpad-viewer .vp-status { font-size: 12px; color: var(--vp-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.voxpad-viewer .vp-status:empty { display: none; }
+.voxpad-viewer .vp-jump-note { white-space: normal; }
+
+.voxpad-viewer .vp-scroll { flex: 1 1 0; min-height: 160px; position: relative; overflow-x: hidden; overflow-y: auto; overflow-anchor: none; background: var(--vp-paper); }
+.voxpad-viewer .vp-scroll:focus-visible { outline: 2px solid var(--vp-focus); outline-offset: -2px; }
+.voxpad-viewer .vp-unit { display: flow-root; padding: 0 14px 4px; }
+.voxpad-viewer .vp-empty { margin: 0; padding: 40px 16px; color: var(--vp-muted); font-size: 14px; text-align: center; }
+.voxpad-viewer .vp-day { position: sticky; top: 0; z-index: 2; display: flex; justify-content: center; padding: 8px 0 4px; pointer-events: none; }
+.voxpad-viewer .vp-day-label { padding: 2px 12px; border: 1px solid var(--vp-line); border-radius: 12px; background: var(--vp-surface); color: var(--vp-muted); font-size: 11.5px; font-weight: 600; }
+
+/* A row is as wide as its bubble, so the focus ring and the reading position belong to the bubble. */
+.voxpad-viewer .vp-msg { display: flex; width: fit-content; max-width: min(78%, 640px); margin-top: 8px; border-radius: 14px; }
+.voxpad-viewer .vp-msg:focus-visible { outline: 2px solid var(--vp-focus); outline-offset: 2px; }
+.voxpad-viewer .vp-msg.vp-follow { margin-top: 3px; }
+.voxpad-viewer .vp-msg.vp-me { margin-inline-start: auto; }
+.voxpad-viewer .vp-msg.vp-system { max-width: 86%; margin-inline: auto; border-radius: 10px; }
+.voxpad-viewer .vp-bubble { position: relative; min-width: 0; max-width: 100%; padding: 7px 11px 5px; border: 1px solid var(--vp-them-line); border-radius: 4px 14px 14px 14px; background: var(--vp-them); }
+.voxpad-viewer .vp-me .vp-bubble { border-color: var(--vp-me-line); border-radius: 14px 4px 14px 14px; background: var(--vp-me); }
+.voxpad-viewer .vp-follow .vp-bubble { border-radius: 14px; }
+.voxpad-viewer .vp-name { font-size: 12.5px; font-weight: 650; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-bubble .vp-name { display: block; margin-bottom: 1px; }
+.voxpad-viewer .vp-text { font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-meta { display: flex; justify-content: flex-end; gap: 6px; margin-top: 1px; color: var(--vp-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.voxpad-viewer .vp-meta:empty { display: none; }
+.voxpad-viewer .vp-edited { font-style: italic; }
+.voxpad-viewer .vp-system-text { padding: 3px 12px; border-radius: 10px; background: var(--vp-surface); color: var(--vp-muted); font-size: 12px; text-align: center; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; padding: 2px 0; color: var(--vp-muted); font-size: 13px; }
+.voxpad-viewer .vp-chip-label { font-weight: 550; }
+.voxpad-viewer .vp-chip-absent .vp-chip-label { font-style: italic; font-weight: 400; }
+.voxpad-viewer .vp-chip-file { min-width: 0; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-chip + .vp-text { margin-top: 2px; }
+.voxpad-viewer .vp-mark { padding: 0 1px; border-radius: 2px; background: var(--vp-mark); color: var(--vp-mark-ink); }
+.voxpad-viewer .vp-match .vp-bubble, .voxpad-viewer .vp-match .vp-system-text, .voxpad-viewer .vp-row.vp-match { box-shadow: 0 0 0 2px var(--vp-mark-line); }
+.voxpad-viewer .vp-current .vp-bubble, .voxpad-viewer .vp-current .vp-system-text { box-shadow: 0 0 0 2px var(--vp-accent); }
+.voxpad-viewer .vp-flash .vp-bubble, .voxpad-viewer .vp-flash .vp-system-text { box-shadow: 0 0 0 3px var(--vp-mark-line); }
+@media (prefers-reduced-motion: no-preference) {
+  .voxpad-viewer .vp-flash .vp-bubble, .voxpad-viewer .vp-flash .vp-system-text { transition: box-shadow .5s ease-out; }
+  .voxpad-viewer .vp-bubble, .voxpad-viewer .vp-system-text { transition: box-shadow 1s ease-out; }
+}
+
+.voxpad-viewer .vp-voice { width: 340px; max-width: 100%; }
+.voxpad-viewer .vp-voice-controls { display: flex; align-items: center; gap: 8px; min-height: 34px; }
+.voxpad-viewer .vp-voice-silent { color: var(--vp-muted); font-size: 13px; }
+.voxpad-viewer .vp-voice-kind { flex: 1 1 auto; font-weight: 550; }
+.voxpad-viewer .vp-play { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; margin: 0; padding: 0; border: 0; border-radius: 50%; background: var(--vp-accent); color: var(--vp-on-accent); font: inherit; font-size: 16px; cursor: pointer; }
+.voxpad-viewer .vp-seek { flex: 1 1 60px; min-width: 40px; height: 22px; margin: 0; accent-color: var(--vp-accent); }
+.voxpad-viewer .vp-voice-time { flex: none; color: var(--vp-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.voxpad-viewer .vp-voice-time:empty { display: none; }
+.voxpad-viewer .vp-transcript { margin-top: 6px; padding-inline-start: 9px; border-inline-start: 2px solid var(--vp-them-line); font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-me .vp-transcript { border-color: var(--vp-me-line); }
+.voxpad-viewer .vp-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; }
+.voxpad-viewer .vp-excerpt.vp-clamp { -webkit-line-clamp: 2; }
+.voxpad-viewer .vp-voice-status { margin-top: 3px; color: var(--vp-muted); font-size: 12px; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-voice-status.vp-problem { color: var(--vp-problem); }
+.voxpad-viewer .vp-voice-error { margin-top: 3px; color: var(--vp-problem); font-size: 12px; }
+.voxpad-viewer .vp-voice + .vp-text { margin-top: 4px; }
+
+.voxpad-viewer .vp-banner { display: flex; align-items: baseline; gap: 8px; width: 100%; margin: 4px 0 2px; padding: 6px 10px; border: 1px solid var(--vp-event-line); border-radius: 10px; background: var(--vp-event-bg); color: var(--vp-event); font: inherit; font-size: 13px; text-align: start; cursor: pointer; }
+.voxpad-viewer .vp-event-number { flex: none; display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--vp-event); color: var(--vp-event-bg); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.voxpad-viewer .vp-banner-date { flex: none; font-weight: 650; }
+.voxpad-viewer .vp-banner-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-width: 0; overflow: hidden; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-banner.vp-selected { border-color: var(--vp-event); box-shadow: 0 0 0 1px var(--vp-event); }
+
+.voxpad-viewer .vp-voice-list { background: var(--vp-surface); }
+.voxpad-viewer .vp-voice-list .vp-unit { padding: 0; }
+.voxpad-viewer .vp-voice-head { padding: 12px 16px 2px; }
+.voxpad-viewer .vp-voice-head:empty { display: none; }
+.voxpad-viewer .vp-row { display: flex; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--vp-line); }
+.voxpad-viewer .vp-row:focus-visible { outline: 2px solid var(--vp-focus); outline-offset: -2px; }
+.voxpad-viewer .vp-row.vp-active { background: var(--vp-paper); box-shadow: inset 3px 0 0 var(--vp-accent); }
+.voxpad-viewer .vp-row-glyph { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--vp-paper); color: var(--vp-muted); font-size: 16px; }
+.voxpad-viewer .vp-row-main { flex: 1 1 0; min-width: 0; }
+.voxpad-viewer .vp-row-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; color: var(--vp-muted); font-size: 12px; }
+.voxpad-viewer .vp-row-top .vp-name { font-size: 13px; }
+.voxpad-viewer .vp-excerpt { max-width: 760px; margin-top: 2px; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-row-actions { display: flex; flex-wrap: wrap; gap: 0 14px; margin-top: 2px; }
+
+.voxpad-viewer .vp-coverage { margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; background: var(--vp-warn-bg); color: var(--vp-warn); font-size: 13px; }
+.voxpad-viewer .vp-coverage-line { margin: 0; }
+.voxpad-viewer .vp-table-wrap { margin: 0 0 10px; overflow-x: auto; border-radius: 4px; }
+.voxpad-viewer .vp-table-wrap:focus-visible { outline: 2px solid var(--vp-focus); outline-offset: 2px; }
+.voxpad-viewer .vp-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.voxpad-viewer .vp-cell { padding: 6px 10px; border-bottom: 1px solid var(--vp-line); background: var(--vp-surface); font-weight: 400; text-align: start; white-space: nowrap; }
+.voxpad-viewer .vp-cell:first-child { position: sticky; inset-inline-start: 0; }
+.voxpad-viewer .vp-table-head .vp-cell { color: var(--vp-muted); font-size: 11px; font-weight: 650; letter-spacing: .4px; text-transform: uppercase; vertical-align: bottom; }
+.voxpad-viewer .vp-cell.vp-cell-number { text-align: end; }
+.voxpad-viewer .vp-everyone { color: var(--vp-ink); }
+
+.voxpad-viewer .vp-activity, .voxpad-viewer .vp-events { flex: 1 1 0; min-height: 0; padding: 14px 16px; overflow: auto; scrollbar-gutter: stable; }
+
+/* Charts. Bars wear a colour-blind-safe series of their own (--vp-c1 to --vp-c6, and --vp-c0 for everybody else); names keep the darker text colours. */
+.voxpad-viewer .vp-s0 { --vp-series: var(--vp-c0); }
+.voxpad-viewer .vp-s1 { --vp-series: var(--vp-c1); }
+.voxpad-viewer .vp-s2 { --vp-series: var(--vp-c2); }
+.voxpad-viewer .vp-s3 { --vp-series: var(--vp-c3); }
+.voxpad-viewer .vp-s4 { --vp-series: var(--vp-c4); }
+.voxpad-viewer .vp-s5 { --vp-series: var(--vp-c5); }
+.voxpad-viewer .vp-s6 { --vp-series: var(--vp-c6); }
+.voxpad-viewer .vp-swatch { flex: none; display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--vp-series, var(--vp-muted)); }
+.voxpad-viewer .vp-cell .vp-swatch { margin-inline-end: 7px; }
+.voxpad-viewer .vp-swatch-spoken { background: repeating-linear-gradient(135deg, var(--vp-muted) 0 1.5px, var(--vp-line) 1.5px 3.5px); }
+.voxpad-viewer .vp-swatch-weekend { border: 1px solid var(--vp-line); background: var(--vp-shade); }
+.voxpad-viewer .vp-swatch-gap { width: 6px; height: 6px; margin: 0 2px; border-radius: 50%; background: var(--vp-warn); }
+.voxpad-viewer .vp-chart-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 16px 0 4px; }
+.voxpad-viewer .vp-seg { display: inline-flex; padding: 2px; border: 1px solid var(--vp-line); border-radius: 9px; background: var(--vp-surface); }
+.voxpad-viewer .vp-seg-item { position: relative; display: inline-flex; }
+.voxpad-viewer .vp-seg-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.voxpad-viewer .vp-seg-label { padding: 3px 12px; border-radius: 6px; color: var(--vp-muted); font-size: 13px; white-space: nowrap; }
+.voxpad-viewer .vp-seg-item:hover .vp-seg-label { color: var(--vp-ink); }
+.voxpad-viewer .vp-seg-input:checked + .vp-seg-label { background: var(--vp-accent); color: var(--vp-on-accent); }
+.voxpad-viewer .vp-seg-input:focus-visible + .vp-seg-label { outline: 2px solid var(--vp-focus); outline-offset: 2px; }
+.voxpad-viewer .vp-legend { display: flex; flex-wrap: wrap; gap: 4px 6px; min-width: 0; }
+.voxpad-viewer .vp-legend-item { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin: 0; padding: 3px 10px 3px 8px; border: 1px solid var(--vp-line); border-radius: 13px; background: var(--vp-surface); color: var(--vp-ink); font: inherit; font-size: 12.5px; cursor: pointer; }
+.voxpad-viewer .vp-legend-item:hover { border-color: var(--vp-muted); }
+.voxpad-viewer .vp-legend-item[aria-pressed="false"] { color: var(--vp-muted); text-decoration: line-through; }
+.voxpad-viewer .vp-legend-item[aria-pressed="false"] .vp-swatch { background: none; box-shadow: inset 0 0 0 1.5px var(--vp-series); }
+.voxpad-viewer .vp-legend-name { min-width: 0; max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voxpad-viewer .vp-keys { display: flex; flex-wrap: wrap; gap: 2px 14px; color: var(--vp-muted); font-size: 12px; }
+.voxpad-viewer .vp-key { display: inline-flex; align-items: center; gap: 6px; }
+.voxpad-viewer .vp-chart-frame { position: relative; }
+.voxpad-viewer .vp-chart-scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+.voxpad-viewer .vp-chart-canvas { min-width: 100%; padding-bottom: 4px; }
+.voxpad-viewer .vp-chart-title { position: sticky; left: 0; width: var(--vp-chart-view, 100%); margin: 12px 0 2px; font-size: 12.5px; font-weight: 650; line-height: 1.4; }
+.voxpad-viewer .vp-chart-note { margin-inline-start: 4px; color: var(--vp-muted); font-weight: 400; }
+.voxpad-viewer .vp-chart-row { display: flex; }
+.voxpad-viewer .vp-chart-axis, .voxpad-viewer .vp-chart-gutter { flex: none; position: sticky; left: 0; z-index: 1; width: 44px; background: var(--vp-surface); }
+.voxpad-viewer .vp-chart-axis { overflow: visible; }
+.voxpad-viewer .vp-chart-gutter { padding-top: 4px; color: var(--vp-muted); font-size: 10.5px; line-height: 1.4; }
+.voxpad-viewer .vp-chart-body { flex: none; position: relative; }
+.voxpad-viewer .vp-chart-key { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; pointer-events: none; }
+.voxpad-viewer .vp-chart-plot { display: block; cursor: pointer; }
+.voxpad-viewer .vp-chart-key:focus-visible + .vp-chart-plot { outline: 2px solid var(--vp-focus); outline-offset: -2px; }
+.voxpad-viewer .vp-chart-tick { fill: var(--vp-muted); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.voxpad-viewer .vp-chart-shade { fill: var(--vp-shade); }
+.voxpad-viewer .vp-chart-grid { fill: none; stroke: var(--vp-line); stroke-width: 1; shape-rendering: crispEdges; }
+.voxpad-viewer .vp-chart-base { fill: none; stroke: var(--vp-muted); stroke-width: 1; stroke-opacity: .6; shape-rendering: crispEdges; }
+.voxpad-viewer .vp-chart-cursor { fill: var(--vp-accent); fill-opacity: .16; }
+.voxpad-viewer .vp-chart-pick { fill: var(--vp-event-bg); stroke: var(--vp-event-line); stroke-width: 1; }
+.voxpad-viewer .vp-bar { fill: var(--vp-series); }
+.voxpad-viewer .vp-hatch-ground { fill: var(--vp-series); fill-opacity: .3; }
+.voxpad-viewer .vp-hatch-ink { fill: none; stroke: var(--vp-series); stroke-width: 1.5; }
+.voxpad-viewer .vp-chart-gaps { fill: var(--vp-warn); }
+.voxpad-viewer .vp-chart-dates { flex: none; }
+.voxpad-viewer .vp-chart-ticks { display: block; }
+.voxpad-viewer .vp-chart-months { display: flex; height: 18px; }
+.voxpad-viewer .vp-chart-month { flex: none; border-inline-start: 1px solid var(--vp-line); }
+.voxpad-viewer .vp-chart-month-label { position: sticky; left: 48px; display: inline-block; padding: 0 5px; color: var(--vp-muted); font-size: 11px; font-weight: 600; line-height: 18px; white-space: nowrap; }
+.voxpad-viewer .vp-chart-lane-row { margin-top: 8px; }
+.voxpad-viewer .vp-chart-lane { flex: none; position: relative; }
+.voxpad-viewer .vp-marker { position: absolute; display: inline-grid; place-items: center; height: 24px; margin: 0; padding: 0; border: 1px solid var(--vp-event-line); border-radius: 12px; background: var(--vp-event-bg); color: var(--vp-event); font: inherit; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; cursor: pointer; }
+.voxpad-viewer .vp-marker:hover { border-color: var(--vp-event); }
+.voxpad-viewer .vp-marker.vp-selected { border-color: var(--vp-event); background: var(--vp-event); color: var(--vp-event-bg); }
+.voxpad-viewer .vp-chart-tip { position: absolute; z-index: 3; top: 0; left: 0; width: max-content; max-width: min(300px, 100%); padding: 8px 10px; border: 1px solid var(--vp-line); border-radius: 8px; background: var(--vp-surface); box-shadow: 0 4px 14px rgba(0, 0, 0, .16); font-size: 12.5px; line-height: 1.4; pointer-events: none; }
+.voxpad-viewer .vp-tip-title { font-weight: 650; }
+.voxpad-viewer .vp-tip-metric { margin-bottom: 4px; color: var(--vp-muted); font-size: 11.5px; }
+.voxpad-viewer .vp-tip-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 7px; }
+.voxpad-viewer .vp-tip-row .vp-swatch { align-self: center; }
+.voxpad-viewer .vp-tip-name { min-width: 0; max-width: 11em; overflow: hidden; color: var(--vp-muted); text-overflow: ellipsis; white-space: nowrap; }
+.voxpad-viewer .vp-tip-value { margin-inline-start: auto; padding-inline-start: 10px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.voxpad-viewer .vp-tip-detail { flex-basis: 100%; padding-inline-start: 17px; color: var(--vp-muted); font-size: 11.5px; text-align: end; font-variant-numeric: tabular-nums; }
+.voxpad-viewer .vp-tip-note { margin-top: 4px; color: var(--vp-warn); font-size: 11.5px; }
+.voxpad-viewer .vp-tip-event { display: flex; align-items: baseline; gap: 7px; margin-top: 5px; }
+.voxpad-viewer .vp-tip-label { min-width: 0; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-chart-footnote { margin: 6px 0 0; color: var(--vp-muted); font-size: 12px; }
+.voxpad-viewer .vp-pin { margin-top: 10px; padding: 8px 12px 10px; border: 1px solid var(--vp-event-line); border-radius: 10px; background: var(--vp-event-bg); }
+.voxpad-viewer .vp-pin-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.voxpad-viewer .vp-pin-title { color: var(--vp-event); font-size: 12px; font-weight: 650; }
+.voxpad-viewer .vp-pin .vp-icon-button { width: 26px; height: 26px; border-color: var(--vp-event-line); background: none; color: var(--vp-event); font-size: 13px; }
+.voxpad-viewer .vp-pin-item { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--vp-event-line); }
+.voxpad-viewer .vp-pin-head + .vp-pin-item { margin-top: 2px; padding-top: 0; border-top: 0; }
+.voxpad-viewer .vp-pin-many .vp-pin-item { padding-inline-start: 13px; }
+.voxpad-viewer .vp-pin-many .vp-pin-item.vp-selected { padding-inline-start: 10px; border-inline-start: 3px solid var(--vp-event); }
+.voxpad-viewer .vp-pin-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.voxpad-viewer .vp-pin-label { max-width: 36em; margin: 5px 0 0; font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.voxpad-viewer .vp-events-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-bottom: 14px; }
+.voxpad-viewer .vp-hint { color: var(--vp-muted); font-size: 12px; }
+.voxpad-viewer .vp-events-note { flex-basis: 100%; margin: 0; color: var(--vp-muted); font-size: 12px; }
+.voxpad-viewer .vp-events-note:empty { display: none; }
+.voxpad-viewer .vp-warnings { flex-basis: 100%; margin: 0; padding: 8px 12px 8px 28px; border-radius: 8px; background: var(--vp-warn-bg); color: var(--vp-warn); font-size: 12px; }
+.voxpad-viewer .vp-warning-more { list-style: none; }
+/* The timeline: a rail with one dot per event beside its card. */
+.voxpad-viewer .vp-event-list { margin: 0; padding: 0; list-style: none; }
+.voxpad-viewer .vp-event-card { position: relative; margin: 0; padding: 0 0 12px; padding-inline-start: 26px; }
+.voxpad-viewer .vp-event-card::before { content: ""; position: absolute; top: 0; bottom: 0; inset-inline-start: 7px; width: 2px; background: var(--vp-event-line); }
+.voxpad-viewer .vp-event-card:first-child::before { top: 20px; }
+.voxpad-viewer .vp-event-card:last-child::before { bottom: auto; height: 20px; }
+.voxpad-viewer .vp-event-card:first-child:last-child::before { display: none; }
+.voxpad-viewer .vp-event-card::after { content: ""; position: absolute; top: 15px; inset-inline-start: 3px; width: 10px; height: 10px; border: 2px solid var(--vp-event); border-radius: 50%; background: var(--vp-surface); }
+.voxpad-viewer .vp-event-card.vp-outside::after { border-color: var(--vp-event-line); }
+.voxpad-viewer .vp-event-card.vp-selected::after { border-color: var(--vp-event); background: var(--vp-event); }
+.voxpad-viewer .vp-event-body { padding: 8px 12px 10px; border: 1px solid var(--vp-line); border-radius: 10px; background: var(--vp-surface); }
+.voxpad-viewer .vp-event-card.vp-selected .vp-event-body { border-color: var(--vp-event); box-shadow: 0 0 0 1px var(--vp-event); }
+.voxpad-viewer .vp-event-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.voxpad-viewer .vp-event-pick { display: inline-flex; align-items: center; gap: 8px; margin: 0; margin-inline-start: -4px; padding: 3px 8px 3px 4px; border: 0; border-radius: 13px; background: none; color: var(--vp-ink); font: inherit; font-size: 13px; font-weight: 600; text-align: start; cursor: pointer; }
+.voxpad-viewer .vp-event-pick:hover { background: var(--vp-paper); }
+.voxpad-viewer .vp-event-date { color: var(--vp-ink); font-size: 13px; font-weight: 600; }
+.voxpad-viewer .vp-event-label { max-width: 36em; margin: 5px 0 0; font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.voxpad-viewer .vp-event-day { margin-top: 9px; padding-top: 7px; border-top: 1px solid var(--vp-line); color: var(--vp-muted); font-size: 12.5px; }
+.voxpad-viewer .vp-event-people { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.voxpad-viewer .vp-event-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; margin: 0; }
+.voxpad-viewer .vp-event-who .vp-swatch { align-self: center; }
+.voxpad-viewer .vp-event-figures { font-variant-numeric: tabular-nums; }
+.voxpad-viewer .vp-event-quiet { margin: 0; }
+.voxpad-viewer .vp-event-cover { margin: 3px 0 0; color: var(--vp-warn); }
+.voxpad-viewer .vp-event-actions { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 6px; }
+.voxpad-viewer .vp-events-more { margin-inline-start: 26px; }
+.voxpad-viewer .vp-flag { padding: 1px 8px; border-radius: 10px; background: var(--vp-warn-bg); color: var(--vp-warn); font-size: 11px; }
+
+/* Now playing: outside the lists, so a recording keeps playing while its bubble is scrolled away. */
+.voxpad-viewer .vp-player { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 16px; border-top: 1px solid var(--vp-line); background: var(--vp-surface); }
+.voxpad-viewer .vp-player-what { display: flex; flex-direction: column; min-width: 0; max-width: 40%; color: var(--vp-muted); font-size: 12px; line-height: 1.35; }
+.voxpad-viewer .vp-player-what .vp-name, .voxpad-viewer .vp-player-when { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voxpad-viewer .vp-player-track { flex: 1 1 180px; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.voxpad-viewer .vp-player .vp-voice-error { margin: 0; }
+.voxpad-viewer .vp-player .vp-voice-error:empty { display: none; }
+
+@media (max-width: 640px) {
+  .voxpad-viewer .vp-head { padding: 10px 12px 0; }
+  .voxpad-viewer .vp-toolbar { padding: 8px 12px; }
+  .voxpad-viewer .vp-filters { display: none; flex-basis: 100%; }
+  .voxpad-viewer .vp-filters.vp-open { display: flex; }
+  .voxpad-viewer .vp-toolbar .vp-filters-toggle { display: inline-flex; }
+  .voxpad-viewer .vp-unit { padding: 0 10px 4px; }
+  .voxpad-viewer .vp-msg { max-width: 88%; }
+  .voxpad-viewer .vp-voice-head { padding: 12px 12px 2px; }
+  .voxpad-viewer .vp-row { padding: 10px 12px; }
+  .voxpad-viewer .vp-cell { padding: 6px 8px; }
+  .voxpad-viewer .vp-table-head .vp-cell { white-space: normal; letter-spacing: .2px; }
+  .voxpad-viewer .vp-activity, .voxpad-viewer .vp-events { padding: 12px; }
+  /* Two rows: who is speaking and the controls, then the seek bar across the whole width. */
+  .voxpad-viewer .vp-player { gap: 6px 8px; padding: 8px 12px; }
+  .voxpad-viewer .vp-player-what { flex: 1 1 0; max-width: none; }
+  .voxpad-viewer .vp-player-track { order: 1; flex-basis: 100%; }
+  .voxpad-viewer .vp-player .vp-voice-error { order: 2; flex-basis: 100%; }
+  .voxpad-viewer .vp-player .vp-field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+@media (max-width: 480px) {
+  .voxpad-viewer .vp-tabs { gap: 0; }
+  .voxpad-viewer .vp-tab { flex: 1 1 auto; justify-content: center; padding: 8px 4px 9px; font-size: 12.5px; }
+  .voxpad-viewer .vp-tab-count { display: none; }
+}
+@media (max-width: 350px) {
+  .voxpad-viewer .vp-tab { font-size: 12px; letter-spacing: -.1px; }
+}
+/* With forced colours backgrounds and shadows go: what is chosen is said with the system's highlight, and the keys of the charts keep the colours of their bars. */
+@media (forced-colors: active) {
+  .voxpad-viewer .vp-swatch, .voxpad-viewer .vp-event-number { forced-color-adjust: none; }
+  .voxpad-viewer .vp-seg-input:checked + .vp-seg-label, .voxpad-viewer .vp-marker.vp-selected { background: Highlight; color: HighlightText; forced-color-adjust: none; }
+  .voxpad-viewer .vp-banner.vp-selected, .voxpad-viewer .vp-event-card.vp-selected .vp-event-body { outline: 2px solid Highlight; outline-offset: 1px; }
+}
