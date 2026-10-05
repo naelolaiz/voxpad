@@ -439,4 +439,4 @@ Security checks run in GitHub Actions as well. CodeQL analyses the Python, JavaS
 
 ## Roadmap
 
-Real-time microphone capture and dictation are planned, with desktop support across Linux, macOS and Windows as the initial target. Live dictation and typing into other applications are not implemented yet.
+A tool for dictation and notes is planned: real-time microphone capture, with desktop support across Linux, macOS and Windows as the initial target. Live dictation, note-taking and typing into other applications are not implemented yet.

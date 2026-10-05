@@ -296,7 +296,7 @@ def create_window(source: Path | None = None):
             self.resize(840, 680)
             self.setAcceptDrops(True)
 
-            title = QtWidgets.QLabel("Turn WhatsApp voice messages into text")
+            title = QtWidgets.QLabel("Transcribe, view and chart a WhatsApp chat")
             font = title.font()
             font.setPointSize(font.pointSize() + 5)
             font.setBold(True)
@@ -635,7 +635,7 @@ def create_window(source: Path | None = None):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="voxpad-app", description="VoxPad desktop application: transcribe WhatsApp voice messages.")
+    parser = argparse.ArgumentParser(prog="voxpad-app", description="VoxPad desktop application: transcribe the voice messages of a WhatsApp chat and view the conversation.")
     parser.add_argument("source", nargs="?", type=Path, help="Export ZIP, folder, chat .txt or audio file to open")
     args = parser.parse_args(argv)
     try:
