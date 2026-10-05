@@ -1,8 +1,12 @@
-/** Read selected WhatsApp exports without expanding unrelated archive media. */
+/** Read selected WhatsApp exports, and what accompanies them, without expanding unrelated archive media. */
 import { AUDIO_EXTENSIONS } from "./chat.js";
 
 // Chat text and recordings are held in memory; other archive media is never read.
 export const MAX_EXTRACTED_BYTES = 512 * 1024 * 1024;
+// What may accompany an export: reports of earlier runs, which are text, and a list of events.
+export const MAX_REPORT_BYTES = 64 * 1024 * 1024;
+export const MAX_EVENTS_BYTES = 1024 * 1024;
+export const ZIP_ALONE = "Choose one ZIP alone, or select the extracted chat and audio files together.";
 const MAX_DIRECTORY_BYTES = 64 * 1024 * 1024;
 // The end record is 22 bytes plus a comment of at most 65535.
 const END_SEARCH_BYTES = 65557;
@@ -268,8 +272,31 @@ export async function readFiles(files) {
   if (!selected.length) throw new Error("Choose a WhatsApp ZIP, chat text, or audio file.");
   selected.forEach(checkedFile);
   if (selected.some((file) => extension(file.name) === ".zip")) {
-    if (selected.length !== 1) throw new Error("Choose one ZIP alone, or select the extracted chat and audio files together.");
+    if (selected.length !== 1) throw new Error(ZIP_ALONE);
     return readExport(selected[0]);
   }
   return readDirect(selected);
+}
+
+/**
+ * Set aside what accompanies an export in a selection: every .json file, which is a report of an
+ * earlier run, and beside a ZIP every .txt file, which can only be a list of events because the chat
+ * is inside the archive. Returns { files, reports, texts }; `files` is what readFiles takes.
+ */
+export function splitSelection(files) {
+  const selected = Array.from(files || []);
+  selected.forEach(checkedFile);
+  const zipped = selected.some((file) => extension(file.name) === ".zip");
+  const reports = selected.filter((file) => extension(file.name) === ".json");
+  const texts = zipped ? selected.filter((file) => extension(file.name) === ".txt") : [];
+  return { files: selected.filter((file) => !reports.includes(file) && !texts.includes(file)), reports, texts };
+}
+
+/** The bytes of a companion file, or null, without reading it, when it holds more than `limit` bytes. */
+export async function readCompanion(file, limit) {
+  checkedFile(file);
+  if (file.size > limit) return null;
+  const data = new Uint8Array(await file.arrayBuffer());
+  if (data.length !== file.size) throw new Error(`File size changed while reading: ${file.name}`);
+  return data;
 }
