@@ -90,8 +90,11 @@ class ExportTests(ExportTestCase):
             export = scan_export(self.root, set())
             chats = read_chats(export)
             contexts, texts, occurrences = index_messages(export)
-        # The exact text, mark and line endings included, in the order the chats were found.
-        self.assertEqual(list(chats.items()), [(chat, text), (unrecognized, "An export in a format that is not recognized")])
+        # Keep the exact text, including the mark and line endings.
+        expected = {chat: text, unrecognized: "An export in a format that is not recognized"}
+        self.assertEqual(chats, expected)
+        # Preserve discovery order; Windows and POSIX sort mixed-case paths differently.
+        self.assertEqual(list(chats), [path for path in export.chats if path in expected])
         self.assertEqual((contexts, texts, occurrences), ({}, chats, {}))
         self.assertIn("skipping non-UTF-8 chat text: latin.txt", error_output.getvalue())
         # With recordings the same chats are read.
