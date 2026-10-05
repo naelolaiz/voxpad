@@ -5,14 +5,26 @@ export const AUDIO_EXTENSIONS = new Set([
 ]);
 
 const INVISIBLE = /[\uFEFF\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu;
-const DATE = String.raw`\p{Nd}{1,4}[./-]\p{Nd}{1,2}[./-]\p{Nd}{1,4}`;
-const PERIOD = String.raw`(?:[aApP]\.?\s*[mM]\.?|[صم]|上午|下午|午前|午後)`;
-const CLOCK = String.raw`\p{Nd}{1,2}[:：]\p{Nd}{2}(?:[:：]\p{Nd}{2})?`;
-const TIME = String.raw`(?:${PERIOD}\s*)?${CLOCK}(?:\s*${PERIOD})?`;
+// The whitespace of Python's \s, by code point: the command reads the same chats, and JavaScript's
+// own \s leaves out U+001C–U+001F and U+0085.
+export const SPACE = `[${String.fromCodePoint(
+  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x85, 0xa0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004,
+  0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000,
+)}]`;
+export const DATE = String.raw`\p{Nd}{1,4}[./-]\p{Nd}{1,2}[./-]\p{Nd}{1,4}`;
+export const PERIOD = String.raw`(?:[aApP]\.?${SPACE}*[mM]\.?|[صم]|上午|下午|午前|午後)`;
+export const CLOCK = String.raw`\p{Nd}{1,2}[:：]\p{Nd}{2}(?:[:：]\p{Nd}{2})?`;
+const TIME = String.raw`(?:${PERIOD}${SPACE}*)?${CLOCK}(?:${SPACE}*${PERIOD})?`;
+// The s flag lets the body run across U+2028 and U+2029: only CR LF, CR and LF end a line.
 const HEADER = new RegExp(
-  String.raw`^(?:\[(?<ios>${DATE}[,،]?\s*${TIME})\]\s*|(?<android>${DATE}[,،]?\s+${TIME})\s+-\s+)(?<body>.*)$`,
-  "u",
+  String.raw`^(?:\[(?<ios>${DATE}[,،]?${SPACE}*${TIME})\]${SPACE}*|(?<android>${DATE}[,،]?${SPACE}+${TIME})${SPACE}+-${SPACE}+)(?<body>.*)$`,
+  "su",
 );
+const SENDER = new RegExp(`[:：]${SPACE}`, "u");
+// A line with its own ending, or the last line when the text does not end with one.
+const LINE = /[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+/g;
+// How a transcript inserted after a message begins; it ends with "]" at the end of a line.
+const TRANSCRIPT_PREFIX = "[Voice message transcript: ";
 
 const order = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
 const basename = (path) => path.slice(path.lastIndexOf("/") + 1);
@@ -46,7 +58,7 @@ export function parseChat(text) {
     const match = HEADER.exec(clean);
     if (match) {
       const body = match.groups.body;
-      const separator = /[:：]\s/u.exec(body);
+      const separator = SENDER.exec(body);
       messages.push({
         timestamp: match.groups.ios || match.groups.android,
         sender: separator ? body.slice(0, separator.index) : null,
@@ -152,7 +164,37 @@ function resultStatus(result) {
   return result.status || (result.error ? "error" : typeof result.text === "string" ? "ok" : "pending");
 }
 
-/** Insert completed transcripts after full message bodies; original text stays intact. */
+/**
+ * Count the lines at the end of a message that are transcripts inserted earlier. `lines` are the
+ * message's lines after its first, as parseChat reads them; a transcript that contains line breaks
+ * runs on to the first line ending in "]".
+ */
+function transcriptTail(lines) {
+  let tail = 0;
+  let number = 0;
+  while (number < lines.length) {
+    let end = number;
+    if (lines[number].startsWith(TRANSCRIPT_PREFIX)) {
+      while (end < lines.length && !lines[end].endsWith("]")) end += 1;
+    } else {
+      end = lines.length;
+    }
+    if (end < lines.length) {
+      tail += end - number + 1;
+      number = end + 1;
+    } else {
+      // Anything typed after a transcript means the message does not end with it.
+      tail = 0;
+      number += 1;
+    }
+  }
+  return tail;
+}
+
+/**
+ * Insert completed transcripts after full message bodies; original text stays intact, except that
+ * the transcripts such a message already ends with are replaced instead of repeated.
+ */
 export function annotatedChat(chat, audioResults) {
   const results = resultMap(audioResults);
   const newline = chat.text.match(/\r\n|\r|\n/u)?.[0] || "\n";
@@ -165,10 +207,13 @@ export function annotatedChat(chat, audioResults) {
       const status = resultStatus(result);
       if (status !== "ok" && status !== "error") continue;
       const text = result.text || (status === "error" ? `Error: ${result.error || "Transcription failed"}` : "No speech detected");
-      additions.push(`[Voice message transcript: ${text}]${newline}`);
+      additions.push(`${TRANSCRIPT_PREFIX}${text}]${newline}`);
     }
     if (!additions.length) continue;
-    const original = chat.text.slice(cursor, message.end_offset);
+    // The chat may be an annotated copy itself.
+    const tail = transcriptTail(message.text.split("\n").slice(1));
+    const earlier = tail ? chat.text.slice(message.start_offset, message.end_offset).match(LINE).slice(-tail).join("") : "";
+    const original = chat.text.slice(cursor, message.end_offset - earlier.length);
     annotated += original;
     if (!original.endsWith("\n") && !original.endsWith("\r")) annotated += newline;
     annotated += additions.join("");
@@ -178,25 +223,18 @@ export function annotatedChat(chat, audioResults) {
 }
 
 /**
- * Build a JSON-compatible report with every recording, ordered chat messages and
- * exact original text. Missing results remain pending for later transcription.
+ * The results a report lists: one entry per recording, pending when it has no result yet, then the
+ * `imported` results of earlier reports whose recording is not loaded, as they were read. The size
+ * of a recording lets a later run notice that it changed.
  */
-export function createReport(index, audioResults, sourceName) {
+export function reportResults(index, audioResults, imported = []) {
   const results = resultMap(audioResults);
-  return {
-    schema_version: 1,
-    source: sourceName || "WhatsApp export",
-    sample_rate: 16000,
-    chats: index.chats.map((chat) => ({
-      file: chat.path,
-      original_text: chat.text,
-      annotated_text: annotatedChat(chat, results),
-      messages: chat.messages.map((message) => ({ ...message, audio_paths: [...message.audio_paths] })),
-    })),
-    results: index.audio.map((recording) => {
+  return [
+    ...index.audio.map((recording) => {
       const result = results.get(recording.path);
       const entry = {
         file: recording.path,
+        bytes: recording.data.length,
         messages: recording.messages.map((message) => ({ ...message })),
         status: resultStatus(result),
         text: result?.text || "",
@@ -209,6 +247,29 @@ export function createReport(index, audioResults, sourceName) {
       if (result?.model) entry.model = result.model;
       return entry;
     }),
+    // They came out of JSON, so a copy through JSON is an exact one.
+    ...imported.map((result) => JSON.parse(JSON.stringify(result))),
+  ];
+}
+
+/**
+ * Build a JSON-compatible report with every recording, ordered chat messages and
+ * exact original text. Missing results remain pending for later transcription.
+ * `imported` are results of earlier reports to keep although their recording is not loaded.
+ */
+export function createReport(index, audioResults, sourceName, imported = []) {
+  const results = resultMap(audioResults);
+  return {
+    schema_version: 1,
+    source: sourceName || "WhatsApp export",
+    sample_rate: 16000,
+    chats: index.chats.map((chat) => ({
+      file: chat.path,
+      original_text: chat.text,
+      annotated_text: annotatedChat(chat, results),
+      messages: chat.messages.map((message) => ({ ...message, audio_paths: [...message.audio_paths] })),
+    })),
+    results: reportResults(index, results, imported),
     warnings: [...index.warnings],
   };
 }

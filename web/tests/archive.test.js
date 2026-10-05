@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { deflateRawSync } from "node:zlib";
 
-import { MAX_EXTRACTED_BYTES, readExport, readFiles } from "../src/archive.js";
+import {
+  MAX_EVENTS_BYTES, MAX_EXTRACTED_BYTES, MAX_REPORT_BYTES, ZIP_ALONE, readCompanion, readExport, readFiles, splitSelection,
+} from "../src/archive.js";
 
 const encode = (text) => new TextEncoder().encode(text);
 const decode = (bytes) => new TextDecoder().decode(bytes);
@@ -252,4 +254,36 @@ test("direct selections reject duplicates, mixed ZIP uploads, empty selection an
   await assert.rejects(readFiles([file("chat.zip", zip([])), file("voice.opus", "audio")]), /one ZIP alone/u);
   await assert.rejects(readFiles([]), /Choose a WhatsApp/u);
   await assert.rejects(readExport({ name: "voice.opus", size: 1, arrayBuffer: async () => new ArrayBuffer(2) }), /size changed/u);
+});
+
+test("reports and, beside a ZIP, text files are set aside from the export", async () => {
+  const archive = file("chat.zip", zip([{ name: "_chat.txt", data: "chat" }]));
+  const [chat, voice, report, other, events] = [
+    file("chat.txt", "chat"), file("voice.opus", "audio"), file("transcripts.JSON", "{}"), file("second.json", "{}"), file("events.txt", "2026-01-05 A day"),
+  ];
+  // Among loose files the text is the chat, so only the reports are companions.
+  let selection = splitSelection([chat, report, voice, other]);
+  assert.deepEqual([selection.files, selection.reports, selection.texts], [[chat, voice], [report, other], []]);
+  assert.deepEqual((await readFiles(selection.files)).map((entry) => entry.path), ["chat.txt", "voice.opus"]);
+  // Beside a ZIP the chat is inside the archive, so a text file is a companion as well.
+  selection = splitSelection([events, archive, report]);
+  assert.deepEqual([selection.files, selection.reports, selection.texts], [[archive], [report], [events]]);
+  assert.deepEqual((await readFiles(selection.files)).map((entry) => entry.path), ["_chat.txt"]);
+  // A report alone leaves no export to read.
+  assert.deepEqual(splitSelection([report]), { files: [], reports: [report], texts: [] });
+  assert.deepEqual(splitSelection(), { files: [], reports: [], texts: [] });
+  // A recording beside a ZIP is no companion: the pair is refused as before.
+  await assert.rejects(readFiles(splitSelection([archive, voice, report]).files), { message: ZIP_ALONE });
+  assert.match(ZIP_ALONE, /^Choose one ZIP alone/u);
+  assert.throws(() => splitSelection([{ name: "report.json" }]), /Choose valid files/u);
+});
+
+test("a companion is read whole, and not at all when it is too large", async () => {
+  assert.deepEqual(await readCompanion(file("events.txt", "abc"), 3), encode("abc"));
+  const large = (size) => ({ name: "transcripts.json", size, arrayBuffer() { throw new Error("Must not read a file that is too large"); } });
+  assert.equal(await readCompanion(large(MAX_REPORT_BYTES + 1), MAX_REPORT_BYTES), null);
+  assert.equal(await readCompanion(large(MAX_EVENTS_BYTES + 1), MAX_EVENTS_BYTES), null);
+  assert.ok(MAX_EVENTS_BYTES < MAX_REPORT_BYTES && MAX_REPORT_BYTES < MAX_EXTRACTED_BYTES);
+  await assert.rejects(readCompanion({ name: "events.txt", size: 1, arrayBuffer: async () => new ArrayBuffer(2) }, MAX_EVENTS_BYTES), /size changed/u);
+  await assert.rejects(readCompanion({ name: "events.txt" }, MAX_EVENTS_BYTES), /Choose valid files/u);
 });

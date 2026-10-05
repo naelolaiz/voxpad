@@ -21,11 +21,15 @@ test-results/
 .env
 .env.*
 
-# Generated transcripts and local audio/model data
+# Generated transcripts, viewers and local audio/model data
 results/
 transcripts.json
 transcripts.txt
-chat_transcribed.txt
+chat_with_transcripts.txt
+*_transcribed.txt
+*_transcribed.json
+conversation.html
+*_audio/
 *.cact
 *.zip
 *.opus

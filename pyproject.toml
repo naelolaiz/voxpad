@@ -5,23 +5,29 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "voxpad"
 version = "0.1.0"
-description = "Local audio and WhatsApp transcription powered by Whisper, with real-time cross-platform dictation planned."
+description = "Local audio and WhatsApp transcription powered by Whisper, with a conversation viewer and chat statistics; real-time dictation is planned."
 readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["dependencies"]
-keywords = ["speech-to-text", "transcription", "whatsapp", "dictation"]
+keywords = ["speech-to-text", "transcription", "whatsapp", "dictation", "chat-statistics"]
 
 [project.optional-dependencies]
-dev = ["build>=1.2"]
+plot = ["matplotlib>=3.9"]
+dev = ["build>=1.2", "matplotlib>=3.9"]
 
 [project.scripts]
-voxpad = "voxpad.whatsapp:cli"
+voxpad = "voxpad.cli:cli"
+voxpad-stats = "voxpad.stats:cli"
 
 [project.gui-scripts]
 voxpad-app = "voxpad.gui:main"
 
 [tool.setuptools.packages.find]
 include = ["voxpad*"]
+
+# The viewer's script and stylesheet are read from the installed package.
+[tool.setuptools.package-data]
+voxpad = ["viewer/*.js", "viewer/*.css"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
