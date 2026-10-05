@@ -80,7 +80,7 @@ jobs:
         run: python -m pip install -e '.[dev]'
       - name: Build wheel and source distribution
         run: python scripts/dev.py build
-      - name: Install source distribution and smoke-test its module CLI
+      - name: Install source distribution and smoke-test its module CLIs
         shell: python
         run: |
           from pathlib import Path
@@ -97,6 +97,19 @@ jobs:
           )
           with tempfile.TemporaryDirectory(prefix="voxpad-sdist-") as directory:
               subprocess.run([sys.executable, "-I", "-m", "voxpad", "--help"], cwd=directory, check=True)
+              subprocess.run([sys.executable, "-I", "-m", "voxpad.stats", "--help"], cwd=directory, check=True)
+              # The viewer's script and stylesheet are package data: a page can only be written if the archive carried them.
+              chat = Path(directory) / "chat" / "chat.txt"
+              chat.parent.mkdir()
+              chat.write_text("13/01/26, 09:02 - Ana: Good morning\n13/01/26, 09:05 - Li: See you at noon\n", encoding="utf-8")
+              completed = subprocess.run(
+                  [sys.executable, "-I", "-m", "voxpad.stats", str(chat)], cwd=directory,
+                  stdout=subprocess.PIPE, text=True, check=True,
+              )
+              page = (Path(directory) / "conversation.html").read_text(encoding="utf-8")
+              if "Parsed 2 messages" not in completed.stdout or "mountViewer(" not in page or "Good morning" not in page:
+                  raise RuntimeError(f"voxpad-stats did not write the viewer: {completed.stdout}")
+              print(completed.stdout, end="")
       - name: Upload installable packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -127,7 +140,7 @@ jobs:
         with:
           name: python-distributions
           path: dist
-      - name: Install wheel and smoke-test the CLI outside the source directory
+      - name: Install wheel and smoke-test the commands outside the source directory
         shell: python
         run: |
           from pathlib import Path
@@ -159,6 +172,20 @@ jobs:
               )
               if "voice.opus" not in completed.stdout:
                   raise RuntimeError(f"Dry-run did not discover the voice note: {completed.stdout}")
+              print(completed.stdout, end="")
+              stats = shutil.which("voxpad-stats")
+              if stats is None:
+                  raise RuntimeError("The installed wheel did not provide the voxpad-stats command")
+              subprocess.run([sys.executable, "-I", "-m", "voxpad.stats", "--help"], cwd=directory, check=True)
+              subprocess.run([stats, "--help"], cwd=directory, check=True)
+              # The viewer's script and stylesheet are package data: a page can only be written if the wheel carried them.
+              chat = Path(directory) / "chat" / "chat.txt"
+              chat.parent.mkdir()
+              chat.write_text("13/01/26, 09:02 - Ana: Good morning\n13/01/26, 09:05 - Li: See you at noon\n", encoding="utf-8")
+              completed = subprocess.run([stats, str(chat)], cwd=directory, stdout=subprocess.PIPE, text=True, check=True)
+              page = (Path(directory) / "conversation.html").read_text(encoding="utf-8")
+              if "Parsed 2 messages" not in completed.stdout or "mountViewer(" not in page or "Good morning" not in page:
+                  raise RuntimeError(f"voxpad-stats did not write the viewer: {completed.stdout}")
               print(completed.stdout, end="")
 
   web:

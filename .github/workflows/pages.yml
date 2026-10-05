@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      # The viewer is bundled into the app from the Python package.
+      - "voxpad/viewer/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

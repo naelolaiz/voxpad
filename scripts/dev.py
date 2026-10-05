@@ -15,9 +15,10 @@ def run(*arguments: str) -> int:
 
 
 def test() -> int:
-    # Audio and window tests otherwise skip when dependencies are absent. CI must run them.
+    # Audio and window tests otherwise skip when dependencies are absent, and the figure tests need matplotlib. CI must run them.
     try:
         import codecpod  # noqa: F401
+        import matplotlib  # noqa: F401
         import numpy  # noqa: F401
         from PySide6 import QtWidgets  # noqa: F401
     except ImportError as error:
