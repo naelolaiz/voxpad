@@ -321,7 +321,7 @@
 }
 @media (max-width: 480px) {
   .voxpad-viewer .vp-tabs { gap: 0; }
-  .voxpad-viewer .vp-tab { flex: 1 1 auto; justify-content: center; padding: 8px 4px 9px; font-size: 12.5px; }
+  .voxpad-viewer .vp-tab { flex: 1 1 auto; justify-content: center; padding: 8px 4px 9px; font-size: 12.5px; white-space: normal; }
   .voxpad-viewer .vp-tab-count { display: none; }
 }
 @media (max-width: 350px) {
